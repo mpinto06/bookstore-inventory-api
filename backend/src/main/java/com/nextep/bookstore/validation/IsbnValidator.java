@@ -63,7 +63,7 @@ public class IsbnValidator implements ConstraintValidator<ValidIsbn, String> {
 
 	@Override
 	public boolean isValid(String value, ConstraintValidatorContext context) {
-		return value == null || isValid(value);
+		return value == null || value.isBlank() || isValid(value);
 	}
 
 }

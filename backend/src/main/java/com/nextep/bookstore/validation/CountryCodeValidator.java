@@ -21,7 +21,7 @@ public class CountryCodeValidator implements ConstraintValidator<ValidCountryCod
 
 	@Override
 	public boolean isValid(String value, ConstraintValidatorContext context) {
-		return value == null || isValid(value);
+		return value == null || value.isBlank() || isValid(value);
 	}
 
 }

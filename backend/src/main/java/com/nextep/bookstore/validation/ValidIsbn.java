@@ -11,7 +11,7 @@ import jakarta.validation.Payload;
 
 /**
  * ISBN-10 o ISBN-13, con o sin guiones/espacios, con dígito verificador correcto.
- * Los valores nulos se consideran válidos (combinar con @NotNull/@NotBlank).
+ * Nulos y en blanco se consideran válidos aquí: de eso se encarga @NotBlank (así no hay dos mensajes).
  */
 @Documented
 @Constraint(validatedBy = IsbnValidator.class)
