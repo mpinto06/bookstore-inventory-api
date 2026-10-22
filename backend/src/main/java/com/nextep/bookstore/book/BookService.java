@@ -1,5 +1,6 @@
 package com.nextep.bookstore.book;
 
+import java.util.List;
 import java.util.Locale;
 
 import org.springframework.data.domain.Pageable;
@@ -11,6 +12,7 @@ import com.nextep.bookstore.book.dto.BookResponse;
 import com.nextep.bookstore.book.dto.PageResponse;
 import com.nextep.bookstore.error.BadRequestException;
 import com.nextep.bookstore.validation.IsbnValidator;
+import com.nextep.bookstore.validation.NoNulValidator;
 
 @Service
 public class BookService {
@@ -42,10 +44,42 @@ public class BookService {
 		return PageResponse.of(repository.findAll(pageable).map(BookMapper::toResponse));
 	}
 
-	/**
-	 * Reemplazo completo. Si cambia cost_usd o supplier_country, el precio de venta calculado
-	 * (selling_price_local y selling_currency) queda obsoleto: se pone en null y debe recalcularse.
-	 */
+	// Categoría obligatoria (máx. 100), coincidencia exacta sin distinguir mayúsculas. Sin resultados: página vacía.
+	@Transactional(readOnly = true)
+	public PageResponse<BookResponse> search(String category, Pageable pageable) {
+		if (category == null || category.isBlank()) {
+			throw new BadRequestException("category", "category es obligatorio");
+		}
+		String trimmed = category.trim();
+		if (trimmed.length() > BookRequest.MAX_CATEGORY_LENGTH) {
+			throw new BadRequestException("category",
+					"category no puede superar los " + BookRequest.MAX_CATEGORY_LENGTH + " caracteres");
+		}
+		if (NoNulValidator.containsNul(trimmed)) {
+			// los parámetros de consulta no pasan por Bean Validation: se comprueba aquí para evitar un 500
+			throw new BadRequestException("category", "category contiene caracteres no permitidos");
+		}
+		return PageResponse.of(repository.findByCategoryIgnoreCase(trimmed, pageable).map(BookMapper::toResponse));
+	}
+
+	// Stock bajo: stock_quantity <= threshold, con threshold entre 0 y el máximo permitido de stock.
+	@Transactional(readOnly = true)
+	public PageResponse<BookResponse> lowStock(int threshold, Pageable pageable) {
+		if (threshold < 0 || threshold > BookRequest.MAX_STOCK) {
+			throw new BadRequestException("threshold", "threshold debe estar entre 0 y " + BookRequest.MAX_STOCK);
+		}
+		return PageResponse.of(repository.findByStockQuantityLessThanEqual(threshold, pageable)
+				.map(BookMapper::toResponse));
+	}
+
+	// Categorías distintas, en orden alfabético (para el filtro del frontend).
+	@Transactional(readOnly = true)
+	public List<String> categories() {
+		return repository.findDistinctCategories();
+	}
+
+	// Reemplazo completo. Si cambia cost_usd o supplier_country, el precio de venta calculado
+	// (selling_price_local y selling_currency) queda obsoleto: se pone en null y debe recalcularse.
 	@Transactional
 	public BookResponse update(Long id, BookRequest request) {
 		Book book = find(id);

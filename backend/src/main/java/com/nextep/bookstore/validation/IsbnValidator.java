@@ -7,10 +7,10 @@ import jakarta.validation.ConstraintValidatorContext;
 
 public class IsbnValidator implements ConstraintValidator<ValidIsbn, String> {
 
-	/** Longitud máxima de la entrada cruda, antes de normalizar. */
+	// Longitud máxima de la entrada cruda, antes de normalizar.
 	public static final int MAX_RAW_LENGTH = 32;
 
-	/** Quita guiones y espacios y pasa a mayúsculas (la X final del ISBN-10). */
+	// Quita guiones y espacios y pasa a mayúsculas (la X final del ISBN-10).
 	public static String normalize(String raw) {
 		if (raw == null) {
 			return null;

@@ -1,7 +1,9 @@
 package com.nextep.bookstore.book;
 
 import java.net.URI;
+import java.util.List;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +26,8 @@ import jakarta.validation.Valid;
 @RequestMapping("/books")
 public class BookController {
 
+	private static final String DEFAULT_THRESHOLD = "10";
+
 	private final BookService service;
 
 	public BookController(BookService service) {
@@ -44,6 +48,31 @@ public class BookController {
 			@RequestParam(defaultValue = BookPaging.DEFAULT_SIZE) int size,
 			@RequestParam(required = false) String sort) {
 		return service.list(BookPaging.pageable(page, size, sort));
+	}
+
+	// Las rutas literales tienen prioridad sobre /{id}, por lo que no se interpretan como un id
+	@GetMapping("/search")
+	public PageResponse<BookResponse> search(
+			@RequestParam(required = false) String category,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = BookPaging.DEFAULT_SIZE) int size,
+			@RequestParam(required = false) String sort) {
+		return service.search(category, BookPaging.pageable(page, size, sort));
+	}
+
+	@GetMapping("/low-stock")
+	public PageResponse<BookResponse> lowStock(
+			@RequestParam(defaultValue = DEFAULT_THRESHOLD) int threshold,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = BookPaging.DEFAULT_SIZE) int size,
+			@RequestParam(required = false) String sort) {
+		Sort defaultSort = Sort.by("stockQuantity", "id");
+		return service.lowStock(threshold, BookPaging.pageable(page, size, sort, defaultSort));
+	}
+
+	@GetMapping("/categories")
+	public List<String> categories() {
+		return service.categories();
 	}
 
 	@GetMapping("/{id}")

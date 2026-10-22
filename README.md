@@ -56,6 +56,9 @@ Base URL: `http://localhost:8080`. El JSON usa `snake_case` en peticiones y resp
 | GET | `/books/{id}` | 200 / 404 |
 | PUT | `/books/{id}` | 200 / 404 / 409 |
 | DELETE | `/books/{id}` | 204 / 404 |
+| GET | `/books/search?category=` | 200 (paginado) / 400 |
+| GET | `/books/low-stock` | 200 (paginado) / 400 |
+| GET | `/books/categories` | 200 (arreglo) |
 
 Campos del cuerpo de POST/PUT (`id`, `selling_price_local`, `selling_currency`, `created_at` y
 `updated_at` los gestiona el servidor y se ignoran si llegan):
@@ -114,6 +117,38 @@ Campos permitidos en `sort`: `id`, `title`, `author`, `category`, `cost_usd`, `s
 { "content": [ { "id": 1, "...": "..." } ], "page": 0, "size": 20, "total_elements": 1, "total_pages": 1 }
 ```
 
+### Búsqueda, stock bajo y categorías
+
+Las rutas literales `/books/search`, `/books/low-stock` y `/books/categories` tienen prioridad sobre
+`/books/{id}`. Los dos primeros usan la misma paginación (`page`, `size`, `sort`) y los mismos
+límites y errores 400 que `GET /books`.
+
+**Buscar por categoría** (`category` obligatorio, máx. 100 caracteres, se recortan los espacios;
+coincidencia exacta sin distinguir mayúsculas; orden por defecto `id,asc`):
+
+```bash
+curl "http://localhost:8080/books/search?category=literatura%20cl%C3%A1sica&sort=cost_usd,desc"
+```
+
+Una categoría sin resultados responde 200 con `content` vacío. Sin `category`, vacío, solo espacios
+o de más de 100 caracteres responde 400.
+
+**Stock bajo** (`threshold` opcional, entero entre 0 y 1000000, por defecto 10; devuelve los libros
+con `stock_quantity <= threshold`; orden por defecto `stock_quantity,asc` y luego `id,asc`):
+
+```bash
+curl "http://localhost:8080/books/low-stock?threshold=5&page=0&size=20"
+```
+
+Un `threshold` negativo, mayor que 1000000, no numérico o desbordado responde 400.
+
+**Categorías existentes** (sin paginación, distintas y en orden alfabético; `[]` si no hay libros):
+
+```bash
+curl http://localhost:8080/books/categories
+# ["Ciencia","Historia","Literatura Clásica"]
+```
+
 ### Formato de error
 
 Todos los errores (incluidos 404 de rutas, 405 y 415) tienen el mismo formato; `field_errors`
@@ -170,3 +205,15 @@ solo aparece en errores de validación:
 - **Ninguna entrada inválida produce un 500:** los límites de cada campo coinciden con las
   columnas de la BD (longitudes, rangos, sin carácter NUL), y un `@RestControllerAdvice` convierte
   cada error en un 4xx/503 con formato único; el 500 queda para fallos realmente inesperados.
+- **Búsqueda exacta e insensible a mayúsculas:** `category` se compara completa (no por fragmento)
+  ignorando mayúsculas/minúsculas, de modo que "literatura clásica" encuentra "Literatura Clásica".
+  No es insensible a acentos y no usa extensiones de PostgreSQL.
+- **Categoría inexistente -> 200 con página vacía:** buscar sin resultados no es un error; un 404
+  se reserva para recursos concretos que no existen.
+- **Stock bajo con `<=`:** un libro tiene stock bajo si `stock_quantity <= threshold`, así que el
+  umbral es inclusivo (con el umbral por defecto de 10, un libro con 10 unidades entra).
+- **Límite del umbral alineado con `stock_quantity`:** `threshold` admite 0..1000000, el mismo
+  rango que el stock; un valor mayor nunca podría filtrar nada distinto y se rechaza con 400.
+- **`/books/categories`:** alimenta el desplegable de filtros del frontend con las categorías que
+  realmente existen, para que el usuario no tenga que escribirlas (y evitar errores tipográficos
+  en `/books/search`).

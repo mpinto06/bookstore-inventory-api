@@ -9,10 +9,8 @@ import java.lang.annotation.Target;
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 
-/**
- * Código de país ISO 3166-1 alpha-2 real (p. ej. "ES", "VE"), sin distinguir mayúsculas.
- * Nulos y en blanco se consideran válidos aquí: de eso se encarga @NotBlank (así no hay dos mensajes).
- */
+// Código de país ISO 3166-1 alpha-2 real (p. ej. "ES", "VE"), sin distinguir mayúsculas.
+// Nulos y en blanco se consideran válidos aquí: de eso se encarga @NotBlank (así no hay dos mensajes).
 @Documented
 @Constraint(validatedBy = CountryCodeValidator.class)
 @Target({ ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT })

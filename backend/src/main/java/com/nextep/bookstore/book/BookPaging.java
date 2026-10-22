@@ -9,17 +9,16 @@ import org.springframework.data.domain.Sort;
 
 import com.nextep.bookstore.error.BadRequestException;
 
-/**
- * Construye el Pageable de GET /books. El sort llega en snake_case ("campo,asc|desc") y se traduce, vía
- * lista blanca, a propiedades de la entidad; nada de lo que escriba el cliente llega a Spring Data sin
- * validar (un nombre desconocido lanzaría PropertyReferenceException, es decir, un 500).
- */
+// Construye el Pageable de los endpoints paginados de /books (listado, búsqueda y stock bajo). El sort llega en snake_case ("campo,asc|desc") y se traduce, vía
+// lista blanca, a propiedades de la entidad; nada de lo que escriba el cliente llega a Spring Data sin
+// validar (un nombre desconocido lanzaría PropertyReferenceException, es decir, un 500).
 final class BookPaging {
 
 	static final String DEFAULT_SIZE = "20";
 	static final int MAX_SIZE = 100;
 
-	private static final Map<String, String> SORTABLE = Map.of(
+	// clave = nombre snake_case del cliente; valor = propiedad de Book (visible para los tests).
+	static final Map<String, String> SORTABLE = Map.of(
 			"id", "id",
 			"title", "title",
 			"author", "author",
@@ -31,14 +30,20 @@ final class BookPaging {
 	private BookPaging() {
 	}
 
+	// Orden por defecto: id ascendente.
 	static Pageable pageable(int page, int size, String sort) {
+		return pageable(page, size, sort, Sort.by("id"));
+	}
+
+	// defaultSort se usa cuando el cliente no envía sort.
+	static Pageable pageable(int page, int size, String sort, Sort defaultSort) {
 		if (page < 0) {
 			throw new BadRequestException("page", "page debe ser mayor o igual a 0");
 		}
 		if (size < 1 || size > MAX_SIZE) {
 			throw new BadRequestException("size", "size debe estar entre 1 y " + MAX_SIZE);
 		}
-		PageRequest pageRequest = PageRequest.of(page, size, parseSort(sort));
+		PageRequest pageRequest = PageRequest.of(page, size, parseSort(sort, defaultSort));
 		if (pageRequest.getOffset() > Integer.MAX_VALUE) {
 			throw new BadRequestException("page", "page demasiado grande: el desplazamiento (page * size) no puede superar "
 					+ Integer.MAX_VALUE);
@@ -46,29 +51,26 @@ final class BookPaging {
 		return pageRequest;
 	}
 
-	private static Sort parseSort(String sort) {
-		Sort.Order order;
+	private static Sort parseSort(String sort, Sort defaultSort) {
 		if (sort == null || sort.isBlank()) {
-			order = Sort.Order.asc("id");
+			return defaultSort;
 		}
-		else {
-			String[] parts = sort.split(",", -1);
-			if (parts.length > 2) {
-				throw invalidSort();
-			}
-			String property = SORTABLE.get(parts[0].trim());
-			if (property == null) {
-				throw invalidSort();
-			}
-			String direction = parts.length == 2 ? parts[1].trim().toLowerCase(Locale.ROOT) : "asc";
-			order = switch (direction) {
-				case "asc" -> Sort.Order.asc(property);
-				case "desc" -> Sort.Order.desc(property);
-				default -> throw invalidSort();
-			};
+		String[] parts = sort.split(",", -1);
+		if (parts.length > 2) {
+			throw invalidSort();
 		}
+		String property = SORTABLE.get(parts[0].trim());
+		if (property == null) {
+			throw invalidSort();
+		}
+		String direction = parts.length == 2 ? parts[1].trim().toLowerCase(Locale.ROOT) : "asc";
+		Sort.Order order = switch (direction) {
+			case "asc" -> Sort.Order.asc(property);
+			case "desc" -> Sort.Order.desc(property);
+			default -> throw invalidSort();
+		};
 		// id como desempate para que la paginación sea estable
-		return order.getProperty().equals("id") ? Sort.by(order) : Sort.by(order, Sort.Order.asc("id"));
+		return property.equals("id") ? Sort.by(order) : Sort.by(order, Sort.Order.asc("id"));
 	}
 
 	private static BadRequestException invalidSort() {

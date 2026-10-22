@@ -39,11 +39,9 @@ import jakarta.validation.Path;
 
 import tools.jackson.databind.exc.MismatchedInputException;
 
-/**
- * Traduce toda excepción al formato {@link ApiError}. Extiende ResponseEntityExceptionHandler para que las
- * excepciones estándar de Spring MVC (404 de ruta, 405, 415...) usen el mismo formato. Los 500 nunca
- * filtran detalles internos: el detalle va solo al log.
- */
+// Traduce toda excepción al formato ApiError. Extiende ResponseEntityExceptionHandler para que las
+// excepciones estándar de Spring MVC (404 de ruta, 405, 415...) usen el mismo formato. Los 500 nunca
+// filtran detalles internos: el detalle va solo al log.
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
@@ -142,7 +140,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return build(HttpStatus.BAD_REQUEST, "Parámetros inválidos", errors, new HttpHeaders(), request);
 	}
 
-	/** Carrera entre dos altas/ediciones con el mismo ISBN: lo atrapa el índice único. */
+	// Carrera entre dos altas/ediciones con el mismo ISBN: lo atrapa el índice único.
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ResponseEntity<Object> handleDataIntegrity(DataIntegrityViolationException ex, WebRequest request) {
 		if (mentionsConstraint(ex, ISBN_UNIQUE_CONSTRAINT)) {
@@ -152,10 +150,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return handleUnexpected(ex, request);
 	}
 
-	/**
-	 * Base de datos no disponible. Para el paso de tasas de cambio, añadir aquí la excepción de la API
-	 * externa (mismo 503, mensaje propio).
-	 */
+	// Base de datos no disponible. Para el paso de tasas de cambio, añadir aquí la excepción de la API
+	// externa (mismo 503, mensaje propio).
 	@ExceptionHandler({ CannotCreateTransactionException.class, DataAccessResourceFailureException.class,
 			TransientDataAccessResourceException.class })
 	ResponseEntity<Object> handleServiceUnavailable(Exception ex, WebRequest request) {
@@ -207,7 +203,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return false;
 	}
 
-	/** camelCase -> snake_case (idempotente sobre nombres que ya son snake_case). */
+	// camelCase -> snake_case (idempotente sobre nombres que ya son snake_case).
 	static String toSnakeCase(String name) {
 		return name.replaceAll("([a-z0-9])([A-Z])", "$1_$2").toLowerCase(Locale.ROOT);
 	}

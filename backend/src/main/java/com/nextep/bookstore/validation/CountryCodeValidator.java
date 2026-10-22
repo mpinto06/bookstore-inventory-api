@@ -10,7 +10,7 @@ public class CountryCodeValidator implements ConstraintValidator<ValidCountryCod
 
 	private static final Set<String> ISO_COUNTRIES = Set.of(Locale.getISOCountries());
 
-	/** Pasa a mayúsculas. */
+	// Pasa a mayúsculas.
 	public static String normalize(String raw) {
 		return raw == null ? null : raw.toUpperCase(Locale.ROOT);
 	}

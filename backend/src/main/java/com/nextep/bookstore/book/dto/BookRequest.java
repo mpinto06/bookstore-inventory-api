@@ -3,6 +3,7 @@ package com.nextep.bookstore.book.dto;
 import java.math.BigDecimal;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.nextep.bookstore.validation.NoNul;
 import com.nextep.bookstore.validation.ValidCountryCode;
 import com.nextep.bookstore.validation.ValidIsbn;
 
@@ -12,24 +13,21 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/**
- * Cuerpo de POST y PUT /books. Los campos que el servidor controla (id, selling_price_local,
- * selling_currency, created_at, updated_at) se ignoran si el cliente los envía.
- */
+// Cuerpo de POST y PUT /books. Los campos que el servidor controla (id, selling_price_local,
+// selling_currency, created_at, updated_at) se ignoran si el cliente los envía.
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record BookRequest(
 
 		@NotBlank(message = "title es obligatorio")
 		@Size(max = 255, message = "title no puede superar los 255 caracteres")
-		@Pattern(regexp = BookRequest.NO_NUL, message = "title contiene caracteres no permitidos")
+		@NoNul(message = "title contiene caracteres no permitidos")
 		String title,
 
 		@NotBlank(message = "author es obligatorio")
 		@Size(max = 255, message = "author no puede superar los 255 caracteres")
-		@Pattern(regexp = BookRequest.NO_NUL, message = "author contiene caracteres no permitidos")
+		@NoNul(message = "author contiene caracteres no permitidos")
 		String author,
 
 		@NotBlank(message = "isbn es obligatorio")
@@ -43,19 +41,20 @@ public record BookRequest(
 
 		@NotNull(message = "stock_quantity es obligatorio")
 		@Min(value = 0, message = "stock_quantity no puede ser negativo")
-		@Max(value = 1_000_000, message = "stock_quantity no puede superar 1000000")
+		@Max(value = BookRequest.MAX_STOCK, message = "stock_quantity no puede superar 1000000")
 		Integer stockQuantity,
 
 		@NotBlank(message = "category es obligatorio")
-		@Size(max = 100, message = "category no puede superar los 100 caracteres")
-		@Pattern(regexp = BookRequest.NO_NUL, message = "category contiene caracteres no permitidos")
+		@Size(max = BookRequest.MAX_CATEGORY_LENGTH, message = "category no puede superar los 100 caracteres")
+		@NoNul(message = "category contiene caracteres no permitidos")
 		String category,
 
 		@NotBlank(message = "supplier_country es obligatorio")
 		@ValidCountryCode(message = "supplier_country debe ser un código de país ISO 3166-1 alpha-2 válido (p. ej. ES, VE)")
 		String supplierCountry) {
 
-	/** PostgreSQL rechaza el carácter NUL en texto; se valida para devolver 400*/
-	static final String NO_NUL = "[^\\x00]*";
+	public static final int MAX_STOCK = 1_000_000;
+
+	public static final int MAX_CATEGORY_LENGTH = 100;
 
 }
