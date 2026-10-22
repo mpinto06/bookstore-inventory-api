@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:18
+    container_name: bookstore-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-bookstore}
+      POSTGRES_USER: ${DB_USER:-bookstore}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bookstore}
+    ports:
+      # 5433 en el host (no 5432) para no chocar con una instancia local de PostgreSQL
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      # PostgreSQL 18+: la imagen guarda los datos bajo /var/lib/postgresql (no /data)
+      - bookstore-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bookstore-db-data:
