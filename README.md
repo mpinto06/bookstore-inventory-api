@@ -29,7 +29,7 @@ API REST de inventario de librerías con una SPA en Angular que la consume.
 
    Flyway aplica las migraciones de `backend/src/main/resources/db/migration` al arrancar.
 
-4. Tests: `./mvnw test` (el test `contextLoads` necesita la BD levantada).
+4. Tests: ver la sección [Tests](#tests) (los de integración usan Docker).
 
 ### Reiniciar la base de datos desde cero
 
@@ -42,6 +42,30 @@ docker compose up -d --wait
 desarrollo, las migraciones se **editan** en lugar de apilar `ALTER`s (V2, V3...) para mantener
 un historial limpio; Flyway detectaría el cambio de checksum en una migración ya aplicada, así
 que hay que recrear la BD para re-aplicarla.
+
+## Tests
+
+```bash
+cd backend
+./mvnw clean verify      # o ./mvnw test
+```
+
+Los tests de integración levantan un **PostgreSQL 18 real con Testcontainers**, por lo que **requieren
+Docker en ejecución** (no necesitan `docker compose up`: arrancan su propio contenedor, uno solo para toda
+la ejecución, que se destruye al terminar). Ningún test usa internet: el proveedor de tasas se sustituye por
+un doble y el refresco (`exchange-rate.refresh.enabled=false`) está desactivado.
+
+| Grupo | Clases | Qué cubre |
+|-------|--------|-----------|
+| Unitarios (sin Spring) | `PriceServiceTest` | fórmula de precio: ejemplo 15.99 x 0.85 -> 13.59 / 19.03, redondeo HALF_UP en el límite, costo máximo con tasa alta, margen configurable, 2 decimales, moneda local por país (ES, VE, AQ) |
+| | `ExchangeRateServiceTest` | `fetchLatest` descarta tasas inválidas; `getRate` con reloj controlado: caché vigente/vencido, respaldo, pausa tras fallo y reintento, moneda sin tasa, 50 hilos -> 1 sola llamada |
+| | `RestClientExchangeRateProviderTest` | cliente HTTP contra un servidor local: respuesta válida, respuestas inválidas, status 500, timeout |
+| | `ExchangeRateRefresherTest`, `ExchangeRateCronTest` | el refresco nunca propaga fallos y respeta `on-startup`; el cron por defecto equivale a las 03:00 de Caracas (07:00 UTC) |
+| | `IsbnValidatorTest`, `CountryCodeValidatorTest`, `NoNulValidatorTest`, `BookPagingTest`, `GlobalExceptionHandlerTest` | validadores, paginación y manejo de errores |
+| Integración (MockMvc + Postgres) | `BookCrudIntegrationTest` | alta, 409 de ISBN (con otros guiones), validaciones 400, campos ignorados, ids inválidos, 404, paginación y orden, PUT, DELETE, forma de `ApiError` |
+| | `BookQueryIntegrationTest` | search (exacta, insensible a mayúsculas), low-stock (umbral inclusivo y orden), categories |
+| | `CalculatePriceIntegrationTest` | LIVE, FALLBACK, 503, 422, 404, 400, PUT que borra el precio, `updated_at` al recalcular, `exchange_rates` intacta |
+| | `DatabaseIntegrationTest` | trigger de `updated_at`, CHECK de `books` y `exchange_rates`, ISBN único, `NUMERIC(20,2)` |
 
 ## Tasas de cambio
 
@@ -335,3 +359,10 @@ solo aparece en errores de validación:
   obsoleto; si fue eliminado, 404.
 - **Limitación del VES:** la respuesta de la API no indica si la tasa del bolívar es la oficial o la paralela;
   se usa tal cual la devuelve el proveedor.
+- **Testcontainers con PostgreSQL real y no H2:** el esquema depende de características de PostgreSQL (el
+  trigger que mantiene `updated_at`, los `CHECK`, los tipos `NUMERIC(20,2)`/`NUMERIC(20,10)` y el
+  `INSERT ... ON CONFLICT`). H2 las emularía de forma distinta y los tests pasarían aunque fallaran en
+  producción. Además Flyway aplica las migraciones reales y Hibernate valida el esquema en cada ejecución.
+- **`java.time.Clock` inyectado en `ExchangeRateService`:** el TTL de la caché y la pausa tras un fallo
+  dependen del tiempo; con un `Clock` que el test avanza a voluntad se prueban sin `Thread.sleep` ni
+  depender del reloj real. En producción el bean es `Clock.systemUTC()`.

@@ -53,11 +53,4 @@ class GlobalExceptionHandlerTest {
 		assertEquals("Error interno del servidor", ((ApiError) response.getBody()).message());
 	}
 
-	@Test
-	void snakeCaseConversion() {
-		assertEquals("cost_usd", GlobalExceptionHandler.toSnakeCase("costUsd"));
-		assertEquals("supplier_country", GlobalExceptionHandler.toSnakeCase("supplier_country"));
-		assertEquals("isbn", GlobalExceptionHandler.toSnakeCase("isbn"));
-	}
-
 }

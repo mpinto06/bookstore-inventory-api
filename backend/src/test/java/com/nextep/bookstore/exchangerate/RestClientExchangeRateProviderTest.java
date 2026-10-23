@@ -9,30 +9,39 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import com.sun.net.httpserver.HttpServer;
 
+// Cliente real contra un servidor HTTP local de prueba (sin internet).
 class RestClientExchangeRateProviderTest {
+
+	private static final String VALID_BODY = "{\"base\":\"USD\",\"date\":\"2026-10-22\",\"rates\":{\"EUR\":0.9}}";
 
 	private HttpServer server;
 
 	private final AtomicReference<Integer> status = new AtomicReference<>(200);
 
-	private final AtomicReference<String> body = new AtomicReference<>();
+	private final AtomicReference<String> body = new AtomicReference<>(VALID_BODY);
 
-	private final AtomicReference<Long> delayMillis = new AtomicReference<>(0L);
+	private final AtomicReference<Boolean> hang = new AtomicReference<>(false);
+
+	private final CountDownLatch release = new CountDownLatch(1);
 
 	@BeforeEach
 	void startServer() throws IOException {
 		server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 		server.createContext("/", exchange -> {
 			try {
-				Thread.sleep(delayMillis.get());
+				if (hang.get()) {
+					release.await();
+				}
 				byte[] bytes = body.get().getBytes(StandardCharsets.UTF_8);
 				exchange.getResponseHeaders().add("Content-Type", "application/json");
 				exchange.sendResponseHeaders(status.get(), bytes.length);
@@ -50,6 +59,7 @@ class RestClientExchangeRateProviderTest {
 
 	@AfterEach
 	void stopServer() {
+		release.countDown();
 		server.stop(0);
 	}
 
@@ -83,6 +93,7 @@ class RestClientExchangeRateProviderTest {
 				"{\"base\":\"USD\",\"date\":\"2026-10-22\",\"rates\":{}}",
 				"{\"base\":\"EUR\",\"date\":\"2026-10-22\",\"rates\":{\"USD\":1.1}}",
 				"{\"base\":\"USD\",\"date\":\"22/10/2026\",\"rates\":{\"EUR\":0.9}}",
+				"{\"base\":\"USD\",\"date\":null,\"rates\":{\"EUR\":0.9}}",
 				"{\"base\":\"USD\",\"rates\":{\"EUR\":0.9}}" };
 		for (String invalid : invalidBodies) {
 			body.set(invalid);
@@ -93,22 +104,19 @@ class RestClientExchangeRateProviderTest {
 	@Test
 	void rejectsNon2xxStatus() {
 		status.set(500);
-		body.set("{\"base\":\"USD\",\"date\":\"2026-10-22\",\"rates\":{\"EUR\":0.9}}");
 
 		assertThatThrownBy(() -> provider(Duration.ofSeconds(3)).fetchLatest())
 				.isInstanceOf(ExchangeRateUnavailableException.class);
 	}
 
+	// Si el timeout de lectura no funcionara, el servidor nunca responde y el test se cortaría por @Timeout.
 	@Test
-	void failsWithinReadTimeout() {
-		body.set("{\"base\":\"USD\",\"date\":\"2026-10-22\",\"rates\":{\"EUR\":0.9}}");
-		delayMillis.set(2_000L);
-		long start = System.nanoTime();
+	@Timeout(10)
+	void readTimeoutIsAProviderFailure() {
+		hang.set(true);
 
-		assertThatThrownBy(() -> provider(Duration.ofMillis(500)).fetchLatest())
+		assertThatThrownBy(() -> provider(Duration.ofMillis(300)).fetchLatest())
 				.isInstanceOf(ExchangeRateUnavailableException.class);
-
-		assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
 	}
 
 }

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -47,6 +48,8 @@ public class ExchangeRateService {
 
 	private final ExchangeRateProperties properties;
 
+	private final Clock clock;
+
 	// Estado en memoria (sin tabla ni librerías): último resultado de fetchLatest() y último fallo.
 	private final ReentrantLock refreshLock = new ReentrantLock();
 
@@ -54,10 +57,12 @@ public class ExchangeRateService {
 
 	private volatile Instant lastFailure;
 
-	public ExchangeRateService(ExchangeRateProvider provider, JdbcTemplate jdbc, ExchangeRateProperties properties) {
+	public ExchangeRateService(ExchangeRateProvider provider, JdbcTemplate jdbc, ExchangeRateProperties properties,
+			Clock clock) {
 		this.provider = provider;
 		this.jdbc = jdbc;
 		this.properties = properties;
+		this.clock = clock;
 	}
 
 	private record CachedRates(ExchangeRateSnapshot snapshot, Instant obtainedAt) {
@@ -81,7 +86,7 @@ public class ExchangeRateService {
 			log.warn("Se descartaron {} tasas inválidas de la API de tasas de cambio", discarded);
 		}
 		ExchangeRateSnapshot snapshot = new ExchangeRateSnapshot(fetched.date(), Map.copyOf(valid));
-		this.cache = new CachedRates(snapshot, Instant.now());
+		this.cache = new CachedRates(snapshot, clock.instant());
 		this.lastFailure = null;
 		return snapshot;
 	}
@@ -90,7 +95,7 @@ public class ExchangeRateService {
 	// (dentro del TTL) -> API (un solo hilo a la vez; tras un fallo, pausa sin llamar a la API) ->
 	// última tasa guardada en la tabla (FALLBACK) -> ExchangeRateUnavailableException.
 	public ResolvedRate getRate(String currency) {
-		Instant now = Instant.now();
+		Instant now = clock.instant();
 		ResolvedRate cached = fromCache(currency, now);
 		if (cached != null) {
 			return cached;
@@ -99,7 +104,7 @@ public class ExchangeRateService {
 			refreshLock.lock();
 			try {
 				// otro hilo pudo refrescar el caché (o fallar) mientras esperábamos el bloqueo
-				now = Instant.now();
+				now = clock.instant();
 				cached = fromCache(currency, now);
 				if (cached != null) {
 					return cached;
@@ -140,7 +145,7 @@ public class ExchangeRateService {
 	}
 
 	private void registerFailure(String reason) {
-		lastFailure = Instant.now();
+		lastFailure = clock.instant();
 		log.warn("No se pudo obtener la tasa de la API ({}); se usan las tasas guardadas durante {}", reason,
 				properties.failureBackoff());
 	}
@@ -161,7 +166,7 @@ public class ExchangeRateService {
 	public ExchangeRateSnapshot refreshAll() {
 		ExchangeRateSnapshot latest = fetchLatest();
 		Map<String, BigDecimal> valid = latest.rates();
-		Timestamp fetchedAt = Timestamp.from(Instant.now());
+		Timestamp fetchedAt = Timestamp.from(clock.instant());
 		Date rateDate = Date.valueOf(latest.date());
 		jdbc.batchUpdate(UPSERT, List.copyOf(valid.entrySet()), BATCH_SIZE, (ps, entry) -> {
 			ps.setString(1, entry.getKey());
