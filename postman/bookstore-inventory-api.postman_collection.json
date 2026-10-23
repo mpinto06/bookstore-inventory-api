@@ -1539,7 +1539,7 @@
     },
     {
       "name": "04 Validaciones 400",
-      "description": "Una petición por caso inválido: cuerpo, ids, paginación, orden y parámetros. Todas deben dar 400 con ApiError (y field_errors del campo que corresponde), nunca 500. El caso de stock decimal documenta un bug conocido del backend (responde 201).",
+      "description": "Una petición por caso inválido: cuerpo, ids, paginación, orden y parámetros. Todas deben dar 400 con ApiError (y field_errors del campo que corresponde). El caso de stock decimal documenta un bug conocido del backend (responde 201).",
       "item": [
         {
           "name": "04.01 title vacío",

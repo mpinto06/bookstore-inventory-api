@@ -542,23 +542,22 @@ reproducir por API: lo cubren los tests del backend.
   precisión y escala explícitas.
 - **Restricciones en la BD y en la aplicación:** la BD es la última línea de defensa de la
   integridad (CHECK, NOT NULL, UNIQUE, longitudes), y la aplicación valida lo mismo con límites
-  explícitos de longitud y rango para que un dato inválido produzca un error 4xx claro y nunca
-  un error 500 por violar una restricción.
+  explícitos de longitud y rango para que un dato inválido produzca un error 4xx claro.
 - **409 para ISBN duplicado:** el ISBN se comprueba antes de guardar (`existsByIsbn`, excluyendo el
   propio libro en el PUT) y, además, el índice único de la BD protege la condición de carrera entre
-  dos peticiones simultáneas: esa violación también se responde 409, no 500.
+  dos peticiones simultáneas: esa violación también se responde 409.
 - **PUT como reemplazo completo:** exige todos los campos y sustituye el recurso entero (no hay PATCH).
 - **Reseteo del precio de venta:** si un PUT cambia `cost_usd` o `supplier_country`, el precio
   calculado (`selling_price_local` + `selling_currency`) se pone en `null` porque quedó obsoleto;
   nunca se conserva un precio calculado con datos que ya no son los del libro.
 - **Lista blanca de ordenamiento:** `sort` solo admite campos conocidos en snake_case, traducidos
-  a propiedades de la entidad; así un nombre arbitrario del cliente no llega a Spring Data
-  (donde provocaría un 500). `page` y `size` también están acotados.
+  a propiedades de la entidad; así un nombre arbitrario del cliente no llega a Spring Data. 
+  `page` y `size` también están acotados.
 - **DTO propio de paginación:** `PageResponse` en lugar de serializar `Page` de Spring Data, para
   que el contrato JSON no dependa de una clase interna del framework.
 - **Ninguna entrada inválida produce un 500:** los límites de cada campo coinciden con las
   columnas de la BD (longitudes, rangos, sin carácter NUL), y un `@RestControllerAdvice` convierte
-  cada error en un 4xx/503 con formato único; el 500 queda para fallos realmente inesperados.
+  cada error en un 4xx/503 con formato único.
 - **Búsqueda exacta e insensible a mayúsculas:** `category` se compara completa (no por fragmento)
   ignorando mayúsculas/minúsculas, de modo que "literatura clásica" encuentra "Literatura Clásica".
   No es insensible a acentos y no usa extensiones de PostgreSQL.
@@ -585,13 +584,12 @@ reproducir por API: lo cubren los tests del backend.
   idempotente, varias instancias refrescando a la vez no corromperían nada (solo harían llamadas
   redundantes a la API), por lo que no se añade ningún bloqueo distribuido (p. ej. ShedLock).
 - **Un fallo de la API externa nunca tumba la aplicación:** timeouts de conexión (2 s) y lectura (3 s),
-  cualquier excepción del refresco se captura y se registra como `WARN` (nunca 500 ni fallo de arranque)
-  y se siguen usando las últimas tasas guardadas.
+  cualquier excepción del refresco se captura y se registra como `WARN` y se siguen usando las últimas tasas guardadas.
 - **API v4 gratuita:** la respuesta de `v4/latest/USD` incluye `WARNING_UPGRADE_TO_V6`, que avisa de que
   existe una v6 (con API key). Se usa la v4 porque no requiere clave; el proveedor está detrás de la
   interfaz `ExchangeRateProvider`, así que migrar a la v6 solo afecta a una clase.
 - **`selling_price_local` como `NUMERIC(20,2)`:** con `(14,2)` un costo alto convertido a una moneda de
-  tasa muy alta desbordaría la columna y daría un 500.
+  tasa muy alta desbordaría la columna y daría un error en la BD. 
 - **Moneda local derivada del país del proveedor:** `Currency.getInstance(Locale.of("", pais))` del JDK, sin
   tabla de países en el código (ES -> EUR, VE -> VES, CL -> CLP). Un país sin moneda (p. ej. `AQ`) responde
   422 con un mensaje claro.

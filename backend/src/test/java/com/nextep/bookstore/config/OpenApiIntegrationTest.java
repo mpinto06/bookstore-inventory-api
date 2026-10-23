@@ -48,7 +48,7 @@ class OpenApiIntegrationTest extends AbstractIntegrationTest {
 				.andExpect(jsonPath("$.paths['/books'].get.parameters[?(@.name=='size')].schema.maximum").value(100));
 	}
 
-	// El @RestControllerAdvice (incluido el catch-all de 500) no debe interferir con la documentación
+	// El @RestControllerAdvice no debe interferir con la documentación
 	@Test
 	void swaggerUiAndItsResourcesAreNotHijackedByTheErrorHandler() throws Exception {
 		mvc.perform(get("/swagger-ui.html")).andExpect(status().isFound())

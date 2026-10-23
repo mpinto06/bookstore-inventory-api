@@ -19,7 +19,7 @@ import com.nextep.bookstore.model.Book;
 class BookPagingTest {
 
 	// Evita que la lista blanca se desincronice de la entidad: PageRequest no valida que la propiedad exista,
-	// así que un renombre en Book solo fallaría (500) al ejecutar la consulta.
+	// así que un renombre en Book solo fallaría al ejecutar la consulta.
 	@Test
 	void everySortableValueIsARealPropertyOfBook() throws NoSuchFieldException {
 		for (var entry : BookPaging.SORTABLE.entrySet()) {

@@ -39,8 +39,7 @@ import jakarta.validation.Path;
 import tools.jackson.databind.exc.MismatchedInputException;
 
 // Traduce toda excepción al formato ApiError. Extiende ResponseEntityExceptionHandler para que las
-// excepciones estándar de Spring MVC (404 de ruta, 405, 415...) usen el mismo formato. Los 500 nunca
-// filtran detalles internos: el detalle va solo al log.
+// excepciones estándar de Spring MVC (404 de ruta, 405, 415...) usen el mismo formato. 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 

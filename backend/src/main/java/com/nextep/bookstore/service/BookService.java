@@ -61,7 +61,7 @@ public class BookService {
 					"category no puede superar los " + BookRequest.MAX_CATEGORY_LENGTH + " caracteres");
 		}
 		if (NoNulValidator.containsNul(trimmed)) {
-			// los parámetros de consulta no pasan por Bean Validation: se comprueba aquí para evitar un 500
+			// los parámetros de consulta no pasan por Bean Validation: se comprueba aquí para evitar un error de servidor
 			throw new BadRequestException("category", "category contiene caracteres no permitidos");
 		}
 		return PageResponse.of(repository.findByCategoryIgnoreCase(trimmed, pageable).map(BookMapper::toResponse));
