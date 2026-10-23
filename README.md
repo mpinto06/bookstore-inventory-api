@@ -105,6 +105,28 @@ a 1.000.000.000 o con moneda que no sea de 3 letras mayúsculas se descartan sin
 
 Ejemplo: `EXCHANGE_RATE_REFRESH_CRON="0 * * * * *" ./mvnw spring-boot:run` refresca cada minuto.
 
+## Documentación de la API
+
+Con la aplicación en marcha (`./mvnw spring-boot:run`):
+
+| Recurso | URL |
+|---------|-----|
+| Swagger UI (probar endpoints desde el navegador) | http://localhost:8080/swagger-ui.html |
+| Especificación OpenAPI 3.1 (JSON) | http://localhost:8080/v3/api-docs |
+
+La especificación se puede **importar en Postman** (*Import* -> *Link* con la URL de `/v3/api-docs`, o
+guardando el JSON como archivo) para obtener una colección con todos los endpoints.
+
+**Desactivarlas por configuración** (por defecto ambas están activas): `springdoc.swagger-ui.enabled` y
+`springdoc.api-docs.enabled` en `application.properties`, o las variables de entorno
+`SPRINGDOC_SWAGGER_UI_ENABLED` y `SPRINGDOC_API_DOCS_ENABLED`. Con la primera en `false`,
+`/swagger-ui.html` responde 404 y `/v3/api-docs` sigue disponible; con la segunda en `false` no hay
+especificación y, como la UI depende de ella, tampoco hay UI. La API de negocio no se ve afectada.
+
+```bash
+SPRINGDOC_SWAGGER_UI_ENABLED=false ./mvnw spring-boot:run
+```
+
 ## Endpoints
 
 Base URL: `http://localhost:8080`. El JSON usa `snake_case` en peticiones y respuestas.
@@ -366,3 +388,17 @@ solo aparece en errores de validación:
 - **`java.time.Clock` inyectado en `ExchangeRateService`:** el TTL de la caché y la pausa tras un fallo
   dependen del tiempo; con un `Clock` que el test avanza a voluntad se prueban sin `Thread.sleep` ni
   depender del reloj real. En producción el bean es `Clock.systemUTC()`.
+- **springdoc 3.x por compatibilidad con Spring Boot 4:** se usa `springdoc-openapi-starter-webmvc-ui` 3.1.1,
+  la línea que soporta Boot 4 (la 2.x es para Boot 3). La documentación se escribe con anotaciones de
+  `io.swagger.v3.oas.annotations`; las de los endpoints viven en la interfaz `BookApi` (que implementa
+  `BookController`) para que el controlador siga legible. Los errores genéricos 400/500/503 se añaden a todas
+  las operaciones desde un `OpenApiCustomizer`, y cada endpoint solo declara los específicos (404, 409, 422).
+- **Esquemas en `snake_case` verificados:** springdoc 3.1.1 genera los esquemas con su propio `ObjectMapper`
+  (Jackson 2, vía swagger-core), que no hereda `spring.jackson.property-naming-strategy` (Jackson 3), así que sin
+  más los esquemas salían en camelCase (`costUsd`) aunque el JSON real use `cost_usd`. Un bean `ModelResolver` con
+  `SNAKE_CASE` lo corrige y `OpenApiIntegrationTest` lo verifica contra `/v3/api-docs`.
+- **Constraints propias descritas con `@Schema`:** springdoc deduce solo las constraints estándar de Bean
+  Validation (`@Size`, `@Min`, `@Max`, `@DecimalMin`, `@NotBlank`), pero no `@ValidIsbn` ni `@ValidCountryCode`,
+  que son validadores propios; por eso su regla (ISBN-10/13 con dígito verificador, país ISO 3166-1 alpha-2) se
+  describe a mano en la `description` del campo. Los límites de `page`, `size` y `threshold` se validan en código
+  (no con anotaciones sobre el parámetro), así que también se declaran a mano con `@Parameter`/`@Schema`.
