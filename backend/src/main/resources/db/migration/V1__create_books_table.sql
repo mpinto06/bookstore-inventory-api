@@ -4,7 +4,7 @@ CREATE TABLE books (
     author              VARCHAR(255)   NOT NULL,
     isbn                VARCHAR(13)    NOT NULL,
     cost_usd            NUMERIC(10, 2) NOT NULL,
-    selling_price_local NUMERIC(14, 2),
+    selling_price_local NUMERIC(20, 2),
     selling_currency    CHAR(3),
     stock_quantity      INTEGER        NOT NULL,
     category            VARCHAR(100)   NOT NULL,

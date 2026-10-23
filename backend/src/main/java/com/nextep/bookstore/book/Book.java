@@ -3,7 +3,9 @@ package com.nextep.bookstore.book;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.generator.EventType;
 import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
@@ -11,8 +13,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
@@ -35,7 +35,7 @@ public class Book {
 	@Column(name = "cost_usd", nullable = false, precision = 10, scale = 2)
 	private BigDecimal costUsd;
 
-	@Column(name = "selling_price_local", precision = 14, scale = 2)
+	@Column(name = "selling_price_local", precision = 20, scale = 2)
 	private BigDecimal sellingPriceLocal;
 
 	@Column(name = "selling_currency", length = 3)
@@ -52,10 +52,13 @@ public class Book {
 	@JdbcTypeCode(SqlTypes.CHAR)
 	private String supplierCountry;
 
-	@Column(name = "created_at", nullable = false, updatable = false)
+	// created_at (DEFAULT) y updated_at (trigger) los asigna la BD; Hibernate solo los lee de vuelta
+	@Generated(event = EventType.INSERT)
+	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private Instant createdAt;
 
-	@Column(name = "updated_at", nullable = false)
+	@Generated(event = { EventType.INSERT, EventType.UPDATE })
+	@Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
 	private Instant updatedAt;
 
 	protected Book() {
@@ -74,16 +77,9 @@ public class Book {
 		this.supplierCountry = supplierCountry;
 	}
 
-	@PrePersist
-	void onCreate() {
-		Instant now = Instant.now();
-		this.createdAt = now;
-		this.updatedAt = now;
-	}
-
-	@PreUpdate
-	void onUpdate() {
-		this.updatedAt = Instant.now();
+	public void applyPrice(BigDecimal sellingPriceLocal, String sellingCurrency) {
+		this.sellingPriceLocal = sellingPriceLocal;
+		this.sellingCurrency = sellingCurrency;
 	}
 
 	public Long getId() {

@@ -30,8 +30,12 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import com.nextep.bookstore.book.BookNotFoundException;
+import com.nextep.bookstore.book.BookModifiedException;
 import com.nextep.bookstore.book.DuplicateIsbnException;
+import com.nextep.bookstore.book.NoLocalCurrencyException;
 import com.nextep.bookstore.error.ApiError.FieldError;
+import com.nextep.bookstore.exchangerate.ExchangeRateNotFoundException;
+import com.nextep.bookstore.exchangerate.ExchangeRateUnavailableException;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -121,6 +125,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				new HttpHeaders(), request);
 	}
 
+	@ExceptionHandler(NoLocalCurrencyException.class)
+	ResponseEntity<Object> handleNoLocalCurrency(NoLocalCurrencyException ex, WebRequest request) {
+		return build(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), null, new HttpHeaders(), request);
+	}
+
+	@ExceptionHandler(BookModifiedException.class)
+	ResponseEntity<Object> handleBookModified(BookModifiedException ex, WebRequest request) {
+		return build(HttpStatus.CONFLICT, ex.getMessage(), null, new HttpHeaders(), request);
+	}
+
 	@ExceptionHandler(BadRequestException.class)
 	ResponseEntity<Object> handleBadRequest(BadRequestException ex, WebRequest request) {
 		return build(HttpStatus.BAD_REQUEST, "Parámetros inválidos",
@@ -150,14 +164,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return handleUnexpected(ex, request);
 	}
 
-	// Base de datos no disponible. Para el paso de tasas de cambio, añadir aquí la excepción de la API
-	// externa (mismo 503, mensaje propio).
+	// Base de datos no disponible.
 	@ExceptionHandler({ CannotCreateTransactionException.class, DataAccessResourceFailureException.class,
 			TransientDataAccessResourceException.class })
 	ResponseEntity<Object> handleServiceUnavailable(Exception ex, WebRequest request) {
 		log.error("Servicio no disponible (base de datos)", ex);
 		return build(HttpStatus.SERVICE_UNAVAILABLE, "Servicio temporalmente no disponible, intente más tarde", null,
 				new HttpHeaders(), request);
+	}
+
+	// Fallo de la API externa de tasas de cambio (mismo 503, mensaje propio; el detalle va solo al log).
+	@ExceptionHandler(ExchangeRateUnavailableException.class)
+	ResponseEntity<Object> handleExchangeRateUnavailable(ExchangeRateUnavailableException ex, WebRequest request) {
+		log.warn("Servicio de tasas de cambio no disponible: {}", ex.getMessage());
+		// el mensaje de la moneda sin tasa es seguro para el cliente; los de fallos de la API llevan detalles internos
+		String message = ex instanceof ExchangeRateNotFoundException ? ex.getMessage()
+				: "Servicio de tasas de cambio no disponible, intente más tarde";
+		return build(HttpStatus.SERVICE_UNAVAILABLE, message, null, new HttpHeaders(), request);
 	}
 
 	@ExceptionHandler(Exception.class)

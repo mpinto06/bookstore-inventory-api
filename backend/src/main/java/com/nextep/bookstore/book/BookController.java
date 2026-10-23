@@ -19,6 +19,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import com.nextep.bookstore.book.dto.BookRequest;
 import com.nextep.bookstore.book.dto.BookResponse;
 import com.nextep.bookstore.book.dto.PageResponse;
+import com.nextep.bookstore.book.dto.PriceCalculationResponse;
 
 import jakarta.validation.Valid;
 
@@ -30,8 +31,11 @@ public class BookController {
 
 	private final BookService service;
 
-	public BookController(BookService service) {
+	private final PriceService priceService;
+
+	public BookController(BookService service, PriceService priceService) {
 		this.service = service;
+		this.priceService = priceService;
 	}
 
 	@PostMapping
@@ -78,6 +82,11 @@ public class BookController {
 	@GetMapping("/{id}")
 	public BookResponse get(@PathVariable Long id) {
 		return service.get(id);
+	}
+
+	@PostMapping("/{id}/calculate-price")
+	public PriceCalculationResponse calculatePrice(@PathVariable Long id) {
+		return priceService.calculate(id);
 	}
 
 	@PutMapping("/{id}")

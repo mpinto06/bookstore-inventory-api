@@ -43,6 +43,44 @@ desarrollo, las migraciones se **editan** en lugar de apilar `ALTER`s (V2, V3...
 un historial limpio; Flyway detectaría el cambio de checksum en una migración ya aplicada, así
 que hay que recrear la BD para re-aplicarla.
 
+## Tasas de cambio
+
+El backend guarda tasas de cambio con base USD en la tabla `exchange_rates` (moneda, tasa, fecha de
+la tasa y momento de la consulta). Nunca hay tasas escritas a mano en el código.
+
+**Cómo se mantienen actualizadas:**
+
+1. **Seed:** la migración `V2` incluye un snapshot real y fechado (todas las monedas que devuelve la
+   API, descargado el 2026-10-22). Permite operar aunque la API externa no responda al arrancar.
+2. **Refresco al arrancar:** al terminar el arranque (después de Flyway) se piden las tasas a la API
+   y se sobrescriben con un upsert. Si falla, se registra un `WARN` y la aplicación arranca igual con
+   las tasas que ya hay.
+3. **Refresco diario:** un job programado repite el refresco todos los días a las **03:00
+   `America/Caracas`** (07:00 UTC). Si falla, `WARN` y se conservan las tasas guardadas; el siguiente
+   disparo lo reintenta.
+
+Fuente: `https://api.exchangerate-api.com/v4/latest/USD`. Un fallo de la API (red, timeout, status
+distinto de 2xx, JSON ilegible, base distinta de USD, `rates` vacío o fecha inválida) nunca tumba la
+aplicación ni deja datos a medias: el refresco es atómico. Las tasas individuales no positivas, mayores
+a 1.000.000.000 o con moneda que no sea de 3 letras mayúsculas se descartan sin afectar a las demás.
+
+**Configuración** (propiedad de `application.properties` <- variable de entorno, con su valor por defecto):
+
+| Propiedad | Variable de entorno | Por defecto |
+|-----------|---------------------|-------------|
+| `exchange-rate.api.url` | `EXCHANGE_RATE_API_URL` | `https://api.exchangerate-api.com/v4/latest/USD` |
+| `exchange-rate.api.connect-timeout` | `EXCHANGE_RATE_CONNECT_TIMEOUT` | `2s` |
+| `exchange-rate.api.read-timeout` | `EXCHANGE_RATE_READ_TIMEOUT` | `3s` |
+| `exchange-rate.refresh.enabled` | `EXCHANGE_RATE_REFRESH_ENABLED` | `true` (`false` desactiva el refresco al arrancar y el programado; los tests lo usan) |
+| `exchange-rate.refresh.on-startup` | `EXCHANGE_RATE_REFRESH_ON_STARTUP` | `true` |
+| `exchange-rate.refresh.cron` | `EXCHANGE_RATE_REFRESH_CRON` | `0 0 3 * * *` |
+| `exchange-rate.refresh.zone` | `EXCHANGE_RATE_REFRESH_ZONE` | `America/Caracas` |
+| `exchange-rate.cache-ttl` | `EXCHANGE_RATE_CACHE_TTL` | `PT15M` (vigencia de la caché en memoria al calcular precios) |
+| `exchange-rate.failure-backoff` | `EXCHANGE_RATE_FAILURE_BACKOFF` | `PT1M` (pausa sin llamar a la API tras un fallo) |
+| `pricing.margin-percentage` | `PRICING_MARGIN_PERCENTAGE` | `40` (margen sobre el costo en moneda local, en %) |
+
+Ejemplo: `EXCHANGE_RATE_REFRESH_CRON="0 * * * * *" ./mvnw spring-boot:run` refresca cada minuto.
+
 ## Endpoints
 
 Base URL: `http://localhost:8080`. El JSON usa `snake_case` en peticiones y respuestas.
@@ -149,6 +187,38 @@ curl http://localhost:8080/books/categories
 # ["Ciencia","Historia","Literatura Clásica"]
 ```
 
+### Cálculo de precio (`POST /books/{id}/calculate-price`)
+
+Sin body. Convierte `cost_usd` a la moneda del país del proveedor, aplica el margen, guarda
+`selling_price_local` y `selling_currency` en el libro (cambia `updated_at`) y devuelve el desglose.
+
+```bash
+curl -X POST http://localhost:8080/books/1/calculate-price
+```
+
+```json
+{
+  "book_id": 1,
+  "cost_usd": 15.99,
+  "exchange_rate": 0.85,
+  "cost_local": 13.59,
+  "margin_percentage": 40,
+  "selling_price_local": 19.03,
+  "currency": "EUR",
+  "calculation_timestamp": "2026-10-23T00:57:15.967682500Z",
+  "rate_source": "LIVE",
+  "rate_date": "2026-10-23"
+}
+```
+
+- `cost_local = round2(cost_usd * exchange_rate)` y `selling_price_local = round2(cost_local * (1 + margen/100))`
+  (HALF_UP, 2 decimales).
+- `rate_source`: `LIVE` (datos de la API de los últimos 15 minutos) o `FALLBACK` (tasa guardada en la BD
+  porque la API no respondió); `rate_date` es la fecha de esa tasa. Son campos adicionales.
+- Errores: 400 (`id` inválido), 404 (libro inexistente), 409 (el libro cambió mientras se calculaba),
+  422 (el país del proveedor no tiene moneda, p. ej. `AQ`), 503 (sin tasa disponible para la moneda
+  ni en la API ni en la BD, o BD caída).
+
 ### Formato de error
 
 Todos los errores (incluidos 404 de rutas, 405 y 415) tienen el mismo formato; `field_errors`
@@ -170,8 +240,9 @@ solo aparece en errores de validación:
 | 400 | validación del body, JSON malformado o con tipos/rangos incorrectos, `id`/`page`/`size`/`sort` inválidos |
 | 404 | libro o ruta inexistente |
 | 405 / 415 | método HTTP o tipo de contenido no soportado |
-| 409 | ISBN duplicado |
-| 503 | base de datos no disponible |
+| 409 | ISBN duplicado; libro modificado durante `calculate-price` |
+| 422 | país del proveedor sin moneda asociada |
+| 503 | base de datos no disponible; sin tasa de cambio para la moneda |
 | 500 | fallo inesperado del servidor (mensaje genérico; el detalle solo va al log) |
 
 ## Decisiones técnicas
@@ -217,3 +288,50 @@ solo aparece en errores de validación:
 - **`/books/categories`:** alimenta el desplegable de filtros del frontend con las categorías que
   realmente existen, para que el usuario no tenga que escribirlas (y evitar errores tipográficos
   en `/books/search`).
+- **Snapshot real fechado en V2 en lugar de tasas fijas en el código:** la tabla nace con tasas reales
+  (generadas con un script desde la API, sin redondear ni inventar valores) y un comentario con la fecha
+  de la descarga. Es solo un punto de partida: el primer refresco exitoso lo sobrescribe. Así la
+  aplicación funciona aunque la API esté caída en el primer arranque, sin código con tasas inventadas.
+- **Zona horaria explícita en el cron:** `0 0 3 * * *` se evalúa en `America/Caracas` (`-04:00`, 07:00
+  UTC) y no en la zona del servidor, porque en Docker el reloj suele estar en UTC y el job correría a
+  otra hora local.
+- **Upsert idempotente por lotes:** `INSERT ... ON CONFLICT (currency) DO UPDATE` con `batchUpdate` en una
+  sola transacción. Repetir el refresco (arranque + cron, reintentos) deja siempre el mismo estado y un
+  fallo a medias no deja tasas parcialmente actualizadas.
+- **Una sola instancia:** el job programado asume una única instancia del backend. Como el upsert es
+  idempotente, varias instancias refrescando a la vez no corromperían nada (solo harían llamadas
+  redundantes a la API), por lo que no se añade ningún bloqueo distribuido (p. ej. ShedLock).
+- **Un fallo de la API externa nunca tumba la aplicación:** timeouts de conexión (2 s) y lectura (3 s),
+  cualquier excepción del refresco se captura y se registra como `WARN` (nunca 500 ni fallo de arranque)
+  y se siguen usando las últimas tasas guardadas.
+- **API v4 gratuita:** la respuesta de `v4/latest/USD` incluye `WARNING_UPGRADE_TO_V6`, que avisa de que
+  existe una v6 (con API key). Se usa la v4 porque no requiere clave; el proveedor está detrás de la
+  interfaz `ExchangeRateProvider`, así que migrar a la v6 solo afecta a una clase.
+- **`selling_price_local` como `NUMERIC(20,2)`:** con `(14,2)` un costo alto convertido a una moneda de
+  tasa muy alta desbordaría la columna y daría un 500.
+- **Moneda local derivada del país del proveedor:** `Currency.getInstance(Locale.of("", pais))` del JDK, sin
+  tabla de países en el código (ES -> EUR, VE -> VES, CL -> CLP). Un país sin moneda (p. ej. `AQ`) responde
+  422 con un mensaje claro.
+- **Cadena de tasas: caché en memoria -> API -> tabla de respaldo -> 503:** `getRate` usa primero el último
+  resultado de la API guardado en memoria (15 min), después consulta la API, si falla usa la última tasa
+  guardada en `exchange_rates` (de cualquier antigüedad) y solo si la moneda tampoco está ahí responde 503.
+- **`exchange_rates` solo se escribe al arrancar y a las 3 AM:** el proveedor actualiza las tasas una vez al
+  día, así que `calculate-price` nunca escribe en esa tabla (solo lee el respaldo).
+- **Caché de 15 min, un solo refresco a la vez y pausa de 60 s tras un fallo:** ante caché vencido, un
+  único hilo llama a la API (bajo un bloqueo; los demás reutilizan el resultado) y, si falla, durante 60 s
+  no se vuelve a llamar y se responde con el respaldo de inmediato. Así 50 peticiones simultáneas generan una
+  sola llamada y una API caída no añade latencia (3 s de timeout) a cada petición. Es estado en memoria, sin
+  librerías externas (válido para una sola instancia).
+- **`rate_source`:** `LIVE` = datos de la API de los últimos 15 minutos; `FALLBACK` = tasa guardada porque la
+  API no respondió (o no traía la moneda). Con `FALLBACK`, `rate_date` indica qué tan vieja es.
+- **Redondeo HALF_UP y cálculo sobre `cost_local` redondeado:** el precio se calcula a partir del costo local
+  ya redondeado para que el desglose cuadre (15.99 x 0.85 = 13.59 -> 19.03).
+- **Margen configurable:** `pricing.margin-percentage` (40 por defecto), no está fijo en el código.
+- **`NUMERIC(20,2)` para el precio:** un costo máximo (99.999.999,99 USD) en una moneda de tasa alta no
+  desborda la columna.
+- **Sin transacción abierta durante la llamada externa:** `calculate-price` lee el libro, obtiene la tasa
+  (posible llamada HTTP) sin transacción y solo después abre una transacción corta que recarga el libro y
+  guarda el precio. Si el libro cambió de costo o país entretanto responde 409 en lugar de guardar un precio
+  obsoleto; si fue eliminado, 404.
+- **Limitación del VES:** la respuesta de la API no indica si la tasa del bolívar es la oficial o la paralela;
+  se usa tal cual la devuelve el proveedor.
