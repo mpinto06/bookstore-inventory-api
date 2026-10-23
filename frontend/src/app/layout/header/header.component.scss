@@ -68,25 +68,77 @@
     list-style: none;
   }
 
+  &__nav {
+    align-items: center;
+  }
+
+  // Inventario es un destino: texto sin caja y una línea de tinta bajo la palabra que se dibuja al pasar el cursor.
   &__link {
+    position: relative;
     display: inline-flex;
     align-items: center;
+    gap: var(--space-2);
     min-height: var(--control-height);
-    padding: 0 var(--space-4);
+    padding: 0 var(--space-3);
     font-weight: var(--font-weight-medium);
     color: #e9dfd7;
     text-decoration: none;
     border-radius: var(--radius-md);
 
+    &::after {
+      content: '';
+      position: absolute;
+      inset: auto var(--space-3) 0.45rem;
+      height: 2px;
+      background: #fb923c;
+      transform: scaleX(0);
+      transform-origin: left;
+
+      @media (prefers-reduced-motion: no-preference) {
+        transition: transform 0.2s ease-out;
+      }
+    }
+
     &:hover {
       color: #fff;
-      background: rgb(255 255 255 / 10%);
+    }
+
+    &:hover::after,
+    &--active::after {
+      transform: scaleX(1);
     }
 
     &--active {
       color: #fff;
-      background: rgb(255 255 255 / 14%);
-      box-shadow: inset 0 -3px 0 #fb923c;
     }
+
+    // Nuevo libro es una acción, no una sección: se ve como botón y no como pestaña.
+    &--action {
+      padding: 0 var(--space-4);
+      color: #fff;
+      border: var(--border-width) solid #fb923c;
+
+      &::after {
+        content: none;
+      }
+
+      &:hover {
+        background: rgb(251 146 60 / 18%);
+      }
+
+      &.header__link--active {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+      }
+    }
+  }
+
+  &__link-icon {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
   }
 }
