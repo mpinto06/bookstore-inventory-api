@@ -1,0 +1,46 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+
+  &__total {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__size {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+
+    .form-control {
+      width: auto;
+    }
+  }
+
+  &__pages {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    justify-content: space-between;
+
+    @include respond-to(md) {
+      width: auto;
+    }
+  }
+
+  &__indicator {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+  }
+}

@@ -1,0 +1,20 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner__circle {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--color-primary-soft);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,30 @@
+:host {
+  --badge-bg: var(--color-neutral-bg);
+  --badge-text: var(--color-neutral-text);
+
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-base);
+  white-space: nowrap;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border-radius: var(--radius-pill);
+}
+
+:host([data-variant='success']) {
+  --badge-bg: var(--color-success-bg);
+  --badge-text: var(--color-success-text);
+}
+
+:host([data-variant='warning']) {
+  --badge-bg: var(--color-warning-bg);
+  --badge-text: var(--color-warning-text);
+}
+
+:host([data-variant='danger']) {
+  --badge-bg: var(--color-danger-bg);
+  --badge-text: var(--color-danger-text);
+}

@@ -1,0 +1,25 @@
+<header class="header">
+  <a class="header__brand" routerLink="/">
+    <span class="header__logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M4 19.5V5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 1.5Zm0 0A2 2 0 0 0 6 21h13" />
+        <path d="M9 7h6" />
+      </svg>
+    </span>
+    Inventario de Librería
+  </a>
+  <nav aria-label="Principal">
+    <ul class="header__nav">
+      <li>
+        <a
+          class="header__link"
+          routerLink="/books"
+          routerLinkActive="header__link--active"
+          ariaCurrentWhenActive="page"
+        >
+          Libros
+        </a>
+      </li>
+    </ul>
+  </nav>
+</header>

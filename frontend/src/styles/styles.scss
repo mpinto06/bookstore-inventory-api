@@ -1,0 +1,170 @@
+// Entrada de estilos globales: tokens, reset mínimo y elementos base (botones y controles de formulario).
+@use 'variables';
+@use 'mixins' as *;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: var(--line-height-tight);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--color-primary);
+
+  &:hover {
+    color: var(--color-primary-hover);
+  }
+}
+
+:focus-visible {
+  @include focus-ring;
+}
+
+.visually-hidden {
+  @include visually-hidden;
+}
+
+// Botones
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background: var(--color-surface-muted);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  &__icon {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &--primary {
+    color: var(--color-primary-contrast);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+
+    &:hover:not(:disabled) {
+      background: var(--color-primary-hover);
+      border-color: var(--color-primary-hover);
+    }
+  }
+
+  // Acción destructiva suave (p. ej. vaciar filtros): se tiñe de rojo solo al interactuar.
+  &--danger-soft:hover:not(:disabled) {
+    color: var(--color-danger-text);
+    background: var(--color-danger-bg);
+    border-color: var(--color-danger-text);
+  }
+}
+
+// Controles de formulario
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.form-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.form-control {
+  min-height: var(--control-height);
+  width: 100%;
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+
+  &:disabled {
+    color: var(--color-text-muted);
+    background: var(--color-surface-muted);
+    cursor: not-allowed;
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--color-danger-text);
+  }
+}
+
+.form-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.form-error {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger-text);
+}
+
+@media (forced-colors: active) {
+  .btn:disabled {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

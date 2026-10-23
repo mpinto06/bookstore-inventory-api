@@ -1,0 +1,244 @@
+<header class="page-header">
+  <h1>Libros</h1>
+  <p class="page-header__subtitle">
+    Consulta el inventario, filtra por categoría o revisa el stock bajo.
+  </p>
+</header>
+
+<form
+  class="filters"
+  aria-label="Filtros"
+  data-testid="filters-form"
+  [formGroup]="form"
+  (ngSubmit)="applyFilters()"
+>
+  <div class="form-field">
+    <label class="form-label" for="filter-mode">Mostrar</label>
+    <select id="filter-mode" class="form-control" formControlName="mode" data-testid="filter-mode">
+      <option value="all">Todos</option>
+      <option value="category">Por categoría</option>
+      <option value="low-stock">Stock bajo</option>
+    </select>
+  </div>
+
+  @switch (mode()) {
+    @case ('category') {
+      <div class="form-field">
+        <label class="form-label" for="filter-category">Categoría</label>
+        <select
+          id="filter-category"
+          class="form-control"
+          formControlName="category"
+          data-testid="filter-category"
+          aria-describedby="filter-category-help"
+          [attr.aria-invalid]="categoryError() ? 'true' : null"
+        >
+          <option value="" disabled>Selecciona una categoría</option>
+          @for (category of categoryOptions(); track category) {
+            <option [value]="category">{{ category }}</option>
+          }
+        </select>
+        <div id="filter-category-help">
+          @if (categoriesState().status === 'error') {
+            <p class="form-error" data-testid="categories-error">
+              No se pudieron cargar las categorías. El resto del listado sigue disponible.
+            </p>
+          } @else if (categoriesState().status === 'loading') {
+            <p class="form-hint">Cargando categorías…</p>
+          } @else if (categoryError(); as message) {
+            <p class="form-error">{{ message }}</p>
+          }
+        </div>
+      </div>
+    }
+    @case ('low-stock') {
+      <div class="form-field">
+        <label class="form-label" for="filter-threshold">Umbral de stock</label>
+        <input
+          id="filter-threshold"
+          class="form-control"
+          type="number"
+          inputmode="numeric"
+          step="1"
+          formControlName="threshold"
+          data-testid="filter-threshold"
+          aria-describedby="filter-threshold-help"
+          [min]="thresholdMin"
+          [max]="thresholdMax"
+          [attr.aria-invalid]="thresholdError() ? 'true' : null"
+        />
+        <div id="filter-threshold-help">
+          @if (thresholdError(); as message) {
+            <p class="form-error" data-testid="threshold-error">{{ message }}</p>
+          } @else {
+            <p class="form-hint">Libros con stock menor o igual a este valor.</p>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  <div class="filters__actions">
+    <button type="submit" class="btn btn--primary" data-testid="filter-apply">
+      <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M4 5h16l-6 8v6l-4-2v-4L4 5Z" />
+      </svg>
+      Aplicar
+    </button>
+    <button
+      type="button"
+      class="btn btn--danger-soft"
+      data-testid="filter-clear"
+      (click)="clearFilters()"
+    >
+      <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
+      </svg>
+      Limpiar
+    </button>
+  </div>
+</form>
+
+@if (error(); as err) {
+  <app-alert
+    data-testid="books-error"
+    [title]="errorTitle()"
+    [message]="err.message"
+    [showRetry]="true"
+    (retry)="retry()"
+  />
+} @else if (hasRows()) {
+  @let page = pageData()!;
+  <section class="results" aria-label="Resultados" [class.results--loading]="loading()">
+    @if (loading()) {
+      <app-spinner class="results__spinner" label="Actualizando resultados…" />
+    }
+    <div class="mobile-sort">
+      <div class="form-field">
+        <label class="form-label" for="mobile-sort-field">Ordenar por</label>
+        <select
+          id="mobile-sort-field"
+          class="form-control"
+          data-testid="mobile-sort-field"
+          (change)="onSortFieldChange($event)"
+        >
+          @for (column of sortableColumns; track column.sortField) {
+            <option
+              [value]="column.sortField"
+              [selected]="column.sortField === effectiveSort().field"
+            >
+              {{ column.label }}
+            </option>
+          }
+        </select>
+      </div>
+      <button
+        type="button"
+        class="btn"
+        data-testid="mobile-sort-direction"
+        (click)="sortBy(effectiveSort().field)"
+      >
+        {{ effectiveSort().direction === 'asc' ? 'Ascendente' : 'Descendente' }}
+        <span aria-hidden="true">{{ effectiveSort().direction === 'asc' ? '▲' : '▼' }}</span>
+      </button>
+    </div>
+    <div class="table-wrapper" role="region" aria-label="Tabla de libros" tabindex="0">
+      <table class="table" data-testid="books-table" [attr.aria-busy]="loading()">
+        <thead>
+          <tr>
+            @for (column of columns; track column.label) {
+              @if (column.sortField; as field) {
+                <th scope="col" [class.numeric]="column.numeric" [attr.aria-sort]="ariaSort(field)">
+                  <button
+                    type="button"
+                    class="sort-button"
+                    [attr.data-testid]="'sort-' + field"
+                    (click)="sortBy(field)"
+                  >
+                    {{ column.label }}
+                    <span class="sort-button__icon" aria-hidden="true">{{ sortIcon(field) }}</span>
+                  </button>
+                </th>
+              } @else {
+                <th scope="col" [class.numeric]="column.numeric">{{ column.label }}</th>
+              }
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (book of page.content; track book.id) {
+            <tr data-testid="book-row">
+              <td class="cell-title">
+                <span class="book-title">{{ book.title }}</span>
+                <span class="book-author">{{ book.author }}</span>
+              </td>
+              <td class="mono" data-label="ISBN">{{ book.isbn }}</td>
+              <td data-label="Categoría">{{ book.category }}</td>
+              <td data-label="País">
+                <abbr [title]="book.supplier_country | countryName">{{
+                  book.supplier_country
+                }}</abbr>
+              </td>
+              <td class="numeric" data-label="Stock" data-testid="book-stock">
+                @switch (stockStatus(book)) {
+                  @case ('out') {
+                    <app-status-badge variant="danger">Sin stock</app-status-badge>
+                  }
+                  @case ('low') {
+                    <span class="stock">
+                      {{ book.stock_quantity | number }}
+                      <app-status-badge variant="warning">Stock bajo</app-status-badge>
+                    </span>
+                  }
+                  @default {
+                    {{ book.stock_quantity | number }}
+                  }
+                }
+              </td>
+              <td class="numeric" data-label="Costo (USD)">{{ book.cost_usd | currency: 'USD' }}</td>
+              <td class="numeric" data-label="Precio de venta" data-testid="book-price">
+                @if (book.selling_price_local !== null && book.selling_currency) {
+                  {{ book.selling_price_local | currency: book.selling_currency }}
+                } @else {
+                  <span aria-hidden="true">—</span>
+                  <span class="not-calculated">Aún no calculado</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination
+      [page]="page.page"
+      [size]="query().size"
+      [totalElements]="page.total_elements"
+      [totalPages]="page.total_pages"
+      [sizeOptions]="pageSizeOptions"
+      [disabled]="loading()"
+      (pageChange)="onPageChange($event)"
+      (sizeChange)="onSizeChange($event)"
+    />
+  </section>
+} @else if (loading()) {
+  <app-spinner class="initial-spinner" data-testid="books-loading" label="Cargando libros…" />
+} @else if (hasFilters()) {
+  <app-empty-state
+    data-testid="empty-filtered"
+    title="Sin resultados para este filtro"
+    description="Prueba con otra categoría u otro umbral, o limpia los filtros."
+  >
+    <button type="button" class="btn" data-testid="empty-clear" (click)="clearFilters()">
+      <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
+      </svg>
+      Limpiar filtros
+    </button>
+  </app-empty-state>
+} @else {
+  <app-empty-state
+    data-testid="empty-all"
+    title="Aún no hay libros"
+    description="Cuando se registren libros en el inventario aparecerán aquí."
+  />
+}

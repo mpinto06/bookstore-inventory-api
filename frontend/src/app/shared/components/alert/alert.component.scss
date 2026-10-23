@@ -1,0 +1,28 @@
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--color-danger-text);
+  background: var(--color-danger-bg);
+  border: var(--border-width) solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+}
+
+.alert {
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  &__title {
+    font-weight: var(--font-weight-bold);
+  }
+
+  &__message {
+    font-size: var(--font-size-sm);
+  }
+}

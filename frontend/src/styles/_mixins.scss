@@ -1,0 +1,51 @@
+// Mixins compartidos. Uso: @use 'mixins' as *; (src/styles está en includePaths de angular.json).
+// Los puntos de corte son variables SCSS porque las media queries no admiten variables CSS.
+@use 'sass:map';
+
+$breakpoints: (
+  sm: 480px,
+  md: 768px,
+  lg: 1024px,
+);
+
+@mixin respond-to($name) {
+  @media (min-width: map.get($breakpoints, $name)) {
+    @content;
+  }
+}
+
+@mixin focus-ring {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+// Oculta visualmente pero mantiene el contenido para lectores de pantalla.
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@mixin card {
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+@mixin button-reset {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}

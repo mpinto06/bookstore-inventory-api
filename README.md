@@ -6,6 +6,7 @@ API REST de inventario de librerías con una SPA en Angular que la consume.
 
 - Java 21
 - Docker (con Docker Compose) para la base de datos PostgreSQL 18
+- Node.js 24 LTS (o 22 LTS ≥ 22.22.3) y npm para el frontend (ver [Frontend](#frontend))
 
 ## Instalación y ejecución
 
@@ -66,6 +67,57 @@ un doble y el refresco (`exchange-rate.refresh.enabled=false`) está desactivado
 | | `BookQueryIntegrationTest` | search (exacta, insensible a mayúsculas), low-stock (umbral inclusivo y orden), categories |
 | | `CalculatePriceIntegrationTest` | LIVE, FALLBACK, 503, 422, 404, 400, PUT que borra el precio, `updated_at` al recalcular, `exchange_rates` intacta |
 | | `DatabaseIntegrationTest` | trigger de `updated_at`, CHECK de `books` y `exchange_rates`, ISBN único, `NUMERIC(20,2)` |
+
+## Frontend
+
+SPA en **Angular 22.2** (standalone, signals, zoneless) en `frontend/`. Interfaz en español.
+
+**Requisitos:** Node.js `^22.22.3 || ^24.15.0` (desarrollado con Node 24.16.0 LTS, npm 11) — es el rango
+que exige Angular 22. Las versiones de `package.json` están fijadas (sin `^` ni `~`).
+
+```bash
+cd frontend
+npm ci                          # instala exactamente lo de package-lock.json
+npx ng serve                    # http://localhost:4200 (requiere el backend en :8080)
+npx ng build                    # build de producción en frontend/dist/
+npx ng test --watch=false       # tests unitarios (Vitest + jsdom), sin backend
+```
+
+**Proxy `/api`:** la SPA siempre llama a `/api/...` (`environment.apiBaseUrl = '/api'`). En desarrollo,
+`ng serve` reenvía esas peticiones a `http://localhost:8080` quitando el prefijo (`proxy.conf.json`:
+`/api/books` -> `/books`). En producción la misma regla la aplicará nginx. Para el navegador todo es el
+mismo origen, así que el backend no necesita CORS. Con el backend caído, el proxy responde **502**: la
+SPA lo muestra como "Sin conexión con el servidor" con un botón "Reintentar".
+
+**Pantalla de libros (`/books`):** listado paginado (10/20/50/100 por página), orden por los encabezados
+de la lista blanca (título, categoría, stock, costo), filtro por categoría (desplegable con
+`/books/categories`) y por stock bajo (umbral 0..1000000). Todo el estado vive en la URL, p. ej.
+`/books?page=1&size=50&sort=cost_usd,desc&filter=category&category=Historia`, así que recargar o
+compartir el enlace conserva la vista.
+
+### Estructura
+
+```
+frontend/
+├── proxy.conf.json                 /api -> http://localhost:8080 (solo ng serve)
+├── public/                         estáticos (favicon)
+└── src/
+    ├── environments/               apiBaseUrl = '/api'
+    ├── styles/                     _variables.scss (tokens CSS), _mixins.scss, styles.scss (entrada)
+    └── app/
+        ├── app.component.ts, app.config.ts, app.routes.ts
+        ├── core/http/              error.interceptor.ts (HttpErrorResponse -> ApiError)
+        ├── shared/
+        │   ├── components/         alert, empty-state, pagination, spinner, status-badge
+        │   ├── models/             ApiError, FieldError, PageResponse<T> (solo interfaces)
+        │   └── pipes/              countryName (ISO-2 -> nombre del país)
+        ├── layout/                 header, footer, main-layout (<router-outlet>)
+        └── features/books/
+            ├── books.routes.ts     cargado con loadChildren
+            ├── models/             Book, lista blanca de sort, query del listado, constantes
+            ├── services/           book.service.ts (HttpClient)
+            └── components/book-list/  componente smart + saneado de la URL y su guard
+```
 
 ## Tasas de cambio
 
@@ -402,3 +454,43 @@ solo aparece en errores de validación:
   que son validadores propios; por eso su regla (ISBN-10/13 con dígito verificador, país ISO 3166-1 alpha-2) se
   describe a mano en la `description` del campo. Los límites de `page`, `size` y `threshold` se validan en código
   (no con anotaciones sobre el parámetro), así que también se declaran a mano con `@Parameter`/`@Schema`.
+
+### Frontend
+
+- **Arquitectura por capas (`core` / `shared` / `layout` / `features`):** `core` contiene los singletons
+  globales (el interceptor HTTP) y nunca se importa desde `features` ni `shared`; `shared` solo tiene piezas
+  presentacionales (componentes *dumb* con `input()`/`output()`, un pipe y modelos que son solo interfaces),
+  sin servicios ni lógica de negocio; `layout` es el armazón (cabecera, pie y `router-outlet`); cada
+  `feature` agrupa sus componentes *smart*, servicios, modelos y rutas, y se carga de forma diferida
+  (`loadChildren`). Las dependencias van en un solo sentido, así que una feature se puede quitar sin tocar
+  el resto.
+- **Angular moderno sin APIs experimentales:** standalone, `OnPush` en todos los componentes, signals para el
+  estado, control flow (`@if`/`@for`/`@switch`), `inject()`, formularios reactivos tipados y zoneless (el
+  valor por defecto del CLI). El HTTP usa `HttpClient` + RxJS (no los recursos HTTP experimentales). Los
+  schematics de `angular.json` generan nombres con sufijo de tipo (`*.component.ts`, `*.service.ts`).
+- **La URL como fuente única de verdad:** página, tamaño, orden y filtros son query params. El componente los
+  lee, los sanea (valor inválido -> valor por defecto: página negativa -> 0, tamaño fuera de 10/20/50/100 ->
+  20, sort fuera de la lista blanca -> orden por defecto, umbral fuera de 0..1000000 -> 10) y pide los datos
+  con `switchMap` (cancela la petición anterior). Así nunca se envía al backend una petición que se sabe
+  inválida, y recargar, volver atrás o compartir el enlace muestra exactamente la misma vista. Un guard
+  reemplaza la URL inválida por la saneada sin crear una entrada nueva en el historial.
+- **Modelos en `snake_case`, sin capa de mapeo:** las interfaces (`Book`, `PageResponse<T>`, `ApiError`)
+  usan los mismos nombres que el JSON (`cost_usd`, `total_elements`...), verificados contra
+  `/v3/api-docs`. Convertir a camelCase añadiría código de mapeo y otro punto de fallo sin aportar nada:
+  el contrato es el de la API.
+- **Errores uniformes:** el interceptor convierte todo `HttpErrorResponse` en un `ApiError`: respeta el del
+  backend; con status 0 (sin red) usa "No se pudo conectar con el servidor"; con un cuerpo que no es JSON
+  (p. ej. 502 del proxy) usa un mensaje genérico según el status. Los componentes nunca ven un error crudo,
+  y un error no corta el flujo de carga: se muestra con "Reintentar".
+- **Proxy en lugar de CORS:** el navegador solo habla con su propio origen (`/api`), en desarrollo vía
+  `proxy.conf.json` y en producción vía nginx, de modo que el backend no necesita configuración CORS ni se
+  hardcodea su URL en el bundle.
+- **Sin librería de UI ni de iconos:** la pantalla solo necesita una tabla, un formulario y unos pocos
+  componentes (paginación, alerta, badge, spinner) que se resuelven con HTML semántico y SCSS propio. Así no
+  se añaden dependencias, el bundle es pequeño (~78 kB transferidos en la carga inicial) y la accesibilidad
+  (`aria-sort`, `aria-current`, `role="status"`, foco visible, contraste AA) está bajo control. Los tokens de
+  diseño son variables CSS en `src/styles/_variables.scss`.
+- **`overrides` de vite 8.3.4:** `@angular/build` 22.2.x fija `vite` 8.3.0, afectado por advisories altos del
+  servidor de desarrollo (GHSA-9jrq-w75r-8gcw, entre otros). `npm audit fix --force` degradaría Angular a
+  22.1.9; en su lugar se fuerza el parche 8.3.4 de la misma línea (solo afecta a herramientas de
+  desarrollo). Se puede quitar cuando `@angular/build` publique una versión con vite corregido.

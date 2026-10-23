@@ -1,0 +1,42 @@
+<nav class="pagination" aria-label="Paginación">
+  <p class="pagination__total" data-testid="pagination-total">{{ resultsLabel() }}</p>
+
+  <div class="pagination__size">
+    <label class="form-label" [for]="sizeSelectId">Por página</label>
+    <select
+      class="form-control"
+      data-testid="pagination-size"
+      [id]="sizeSelectId"
+      [disabled]="disabled()"
+      (change)="onSizeChange($event)"
+    >
+      @for (option of sizeOptions(); track option) {
+        <option [value]="option" [selected]="option === size()">{{ option }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="pagination__pages">
+    <button
+      type="button"
+      class="btn"
+      data-testid="pagination-previous"
+      [disabled]="disabled() || isFirst()"
+      (click)="previous()"
+    >
+      <span aria-hidden="true">‹</span> Anterior
+    </button>
+    <span class="pagination__indicator" aria-current="page" data-testid="pagination-indicator">
+      Página {{ displayPage() }} de {{ displayTotalPages() }}
+    </span>
+    <button
+      type="button"
+      class="btn"
+      data-testid="pagination-next"
+      [disabled]="disabled() || isLast()"
+      (click)="next()"
+    >
+      Siguiente <span aria-hidden="true">›</span>
+    </button>
+  </div>
+</nav>

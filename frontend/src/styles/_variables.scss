@@ -1,0 +1,70 @@
+// Tokens de diseño como variables CSS nativas: se pueden sobrescribir en cualquier ámbito (tema).
+// Todas las combinaciones texto/fondo cumplen contraste WCAG AA (>= 4.5:1).
+:root {
+  // Colores base
+  --color-bg: #f7f4f1;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f3eeea;
+  --color-text: #241b16;
+  --color-text-muted: #5c4f47;
+  --color-border: #e3dbd4;
+  --color-border-strong: #a8998e;
+
+  // Marca / acciones
+  --color-primary: #c2410c;
+  --color-primary-hover: #9a3412;
+  --color-primary-contrast: #ffffff;
+  --color-primary-soft: #ffeedd;
+  --color-ink: #241b16;
+  --color-ink-text: #f7f4f1;
+  --color-focus: #9a3412;
+
+  // Estados (texto sobre su fondo suave)
+  --color-neutral-bg: #efeae6;
+  --color-neutral-text: #3d322b;
+  --color-success-bg: #dcfce7;
+  --color-success-text: #166534;
+  --color-warning-bg: #fef08a;
+  --color-warning-text: #5c3d00;
+  --color-danger-bg: #fee2e2;
+  --color-danger-text: #991b1b;
+  --color-danger-border: #f5b5b5;
+
+  // Tipografía del sistema (sin fuentes externas)
+  --font-family:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-family-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 650;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+
+  // Espaciados (escala de 4px)
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  // Bordes, radios y sombras
+  --border-width: 1px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgb(36 27 22 / 8%);
+  --shadow-md: 0 2px 8px rgb(36 27 22 / 10%), 0 1px 2px rgb(36 27 22 / 8%);
+
+  // Layout
+  --content-max-width: 1200px;
+  --control-height: 2.75rem;
+  --transition-fast: 120ms ease-out;
+}
