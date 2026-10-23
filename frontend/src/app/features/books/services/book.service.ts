@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { PageResponse } from '../../../shared/models/page-response.model';
-import { Book } from '../models/book.model';
+import { Book, BookPayload, PriceCalculation } from '../models/book.model';
 import { PageRequest } from '../models/book-query.model';
 
 @Injectable({ providedIn: 'root' })
@@ -30,6 +30,27 @@ export class BookService {
 
   categories(): Observable<string[]> {
     return this.http.get<string[]>(`${this.baseUrl}/categories`);
+  }
+
+  get(id: number): Observable<Book> {
+    return this.http.get<Book>(`${this.baseUrl}/${id}`);
+  }
+
+  create(payload: BookPayload): Observable<Book> {
+    return this.http.post<Book>(this.baseUrl, payload);
+  }
+
+  // PUT = reemplazo completo del libro.
+  update(id: number, payload: BookPayload): Observable<Book> {
+    return this.http.put<Book>(`${this.baseUrl}/${id}`, payload);
+  }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  calculatePrice(id: number): Observable<PriceCalculation> {
+    return this.http.post<PriceCalculation>(`${this.baseUrl}/${id}/calculate-price`, null);
   }
 }
 

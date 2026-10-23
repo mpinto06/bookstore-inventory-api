@@ -16,8 +16,21 @@
           routerLink="/books"
           routerLinkActive="header__link--active"
           ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="exactMatch"
         >
-          Libros
+          Inventario
+        </a>
+      </li>
+      <li>
+        <a
+          class="header__link"
+          routerLink="/books/new"
+          routerLinkActive="header__link--active"
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="exactMatch"
+          [state]="{ from: currentUrl() }"
+        >
+          Nuevo libro
         </a>
       </li>
     </ul>

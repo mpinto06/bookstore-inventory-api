@@ -101,6 +101,22 @@ a {
     }
   }
 
+  &--small {
+    min-height: 2.25rem;
+    padding: 0 var(--space-3);
+  }
+
+  &--danger {
+    color: #fff;
+    background: var(--color-danger-text);
+    border-color: var(--color-danger-text);
+
+    &:hover:not(:disabled) {
+      background: #7f1d1d;
+      border-color: #7f1d1d;
+    }
+  }
+
   // Acción destructiva suave (p. ej. vaciar filtros): se tiñe de rojo solo al interactuar.
   &--danger-soft:hover:not(:disabled) {
     color: var(--color-danger-text);

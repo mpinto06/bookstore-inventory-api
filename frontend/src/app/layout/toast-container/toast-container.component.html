@@ -1,0 +1,32 @@
+<div class="toasts">
+  <div class="toasts__region" role="status" aria-live="polite" data-testid="toasts-polite">
+    @for (toast of polite(); track toast.id) {
+      <div class="toast" [attr.data-kind]="toast.kind" data-testid="toast">
+        <p class="toast__message">{{ toast.message }}</p>
+        <button
+          type="button"
+          class="toast__close"
+          aria-label="Cerrar aviso"
+          (click)="dismiss(toast.id)"
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
+    }
+  </div>
+  <div class="toasts__region" role="alert" data-testid="toasts-errors">
+    @for (toast of errors(); track toast.id) {
+      <div class="toast" data-kind="error" data-testid="toast">
+        <p class="toast__message">{{ toast.message }}</p>
+        <button
+          type="button"
+          class="toast__close"
+          aria-label="Cerrar aviso"
+          (click)="dismiss(toast.id)"
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
+    }
+  </div>
+</div>

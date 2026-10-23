@@ -1,0 +1,39 @@
+<dialog
+  #dialog
+  class="modal"
+  data-testid="confirm-modal"
+  [attr.aria-labelledby]="titleId"
+  [attr.aria-describedby]="messageId"
+  (cancel)="onNativeCancel($event)"
+  (click)="onDialogClick($event)"
+>
+  <div class="modal__content">
+    <h2 class="modal__title" [id]="titleId">{{ title() }}</h2>
+    <p class="modal__message" [id]="messageId">{{ message() }}</p>
+    <div class="modal__actions">
+      <button
+        #cancelButton
+        type="button"
+        class="btn"
+        data-testid="modal-cancel"
+        [disabled]="busy()"
+        (click)="requestCancel()"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="btn btn--danger"
+        data-testid="modal-confirm"
+        [disabled]="busy()"
+        [attr.aria-busy]="busy()"
+        (click)="confirm()"
+      >
+        @if (busy()) {
+          <span class="modal__busy" aria-hidden="true"></span>
+        }
+        {{ confirmLabel() }}
+      </button>
+    </div>
+  </div>
+</dialog>

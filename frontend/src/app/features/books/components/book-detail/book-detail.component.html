@@ -1,0 +1,135 @@
+<a class="back-link" [routerLink]="backTree" data-testid="back-link">‹ Volver</a>
+
+@switch (loadState()) {
+  @case ('loading') {
+    <app-spinner class="centered" size="lg" label="Cargando libro…" data-testid="detail-loading" />
+  }
+  @case ('not-found') {
+    <app-empty-state
+      data-testid="detail-not-found"
+      title="No encontramos este libro"
+      description="Puede que se haya eliminado o que el enlace no sea correcto."
+    >
+      <a class="btn btn--primary" routerLink="/books">Volver al listado</a>
+    </app-empty-state>
+  }
+  @case ('error') {
+    <app-alert
+      data-testid="detail-error"
+      title="No se pudo cargar el libro"
+      [message]="loadError()?.message ?? null"
+      [showRetry]="true"
+      (retry)="reload()"
+    />
+  }
+  @default {
+    @let b = book()!;
+    <header class="page-header">
+      <div>
+        <h1 data-testid="detail-title">{{ b.title }}</h1>
+        <p class="page-header__author">{{ b.author }}</p>
+      </div>
+      <div class="page-header__actions">
+        <a
+          class="btn"
+          data-testid="detail-edit"
+          [routerLink]="['/books', b.id, 'edit']"
+          [state]="{ from: detailUrl }"
+        >
+          Editar
+        </a>
+        <button
+          type="button"
+          class="btn btn--danger-soft"
+          data-testid="detail-delete"
+          (click)="askDelete()"
+        >
+          <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
+          </svg>
+          Eliminar
+        </button>
+      </div>
+    </header>
+
+    <section class="card" aria-label="Datos del libro">
+      <dl class="data">
+        <div>
+          <dt>ISBN</dt>
+          <dd class="mono" data-testid="detail-isbn">{{ b.isbn }}</dd>
+        </div>
+        <div>
+          <dt>Categoría</dt>
+          <dd>{{ b.category }}</dd>
+        </div>
+        <div>
+          <dt>País del proveedor</dt>
+          <dd>{{ b.supplier_country | countryName }} ({{ b.supplier_country }})</dd>
+        </div>
+        <div>
+          <dt>Stock</dt>
+          <dd data-testid="detail-stock">{{ b.stock_quantity | number }}</dd>
+        </div>
+        <div>
+          <dt>Costo</dt>
+          <dd data-testid="detail-cost">{{ costLabel() }}</dd>
+        </div>
+        <div>
+          <dt>Precio de venta</dt>
+          <dd data-testid="detail-price">
+            @if (priceLabel(); as price) {
+              {{ price }}
+            } @else {
+              <span aria-hidden="true">—</span>
+              <span class="visually-hidden">Aún no calculado</span>
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>Creado</dt>
+          <dd>{{ b.created_at | date: 'dd/MM/yyyy HH:mm' }}</dd>
+        </div>
+        <div>
+          <dt>Actualizado</dt>
+          <dd>{{ b.updated_at | date: 'dd/MM/yyyy HH:mm' }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="card price-actions" aria-label="Precio de venta">
+      <p>
+        El precio de venta se calcula con la tasa de cambio de la moneda del país del proveedor.
+      </p>
+      <button
+        type="button"
+        class="btn btn--primary"
+        data-testid="calculate-price"
+        [disabled]="calculating()"
+        [attr.aria-busy]="calculating()"
+        (click)="calculatePrice()"
+      >
+        @if (calculating()) {
+          <app-spinner size="sm" label="Calculando…" />
+        }
+        Calcular precio de venta
+      </button>
+    </section>
+
+    @if (priceResult(); as result) {
+      <app-price-breakdown [result]="result" />
+    }
+
+    @if (confirmingDelete()) {
+      <app-confirm-modal
+        title="Eliminar libro"
+        confirmLabel="Eliminar"
+        [message]="
+          '¿Seguro que quieres eliminar «' + b.title + '»? Esta acción no se puede deshacer.'
+        "
+        [busy]="deleting()"
+        (confirmed)="confirmDelete()"
+        (cancelled)="cancelDelete()"
+      />
+    }
+  }
+}

@@ -9,7 +9,7 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 
 import { errorInterceptor } from '../../../../core/http/error.interceptor';
-import { ApiError } from '../../../../shared/models/api-error.model';
+import { ApiError } from '../../../../core/http/api-error.model';
 import { PageResponse } from '../../../../shared/models/page-response.model';
 import { BOOKS_ROUTES } from '../../books.routes';
 import { Book } from '../../models/book.model';

@@ -2,6 +2,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
   inject,
@@ -15,7 +16,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   Observable,
   Subject,
@@ -29,12 +30,15 @@ import {
   tap,
 } from 'rxjs';
 
+import { apiErrorMessage } from '../../../../core/http/api-error-message';
+import { ToastService } from '../../../../core/ui/toast.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
+import { ConfirmModalComponent } from '../../../../shared/components/confirm-modal/confirm-modal.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { PaginationComponent } from '../../../../shared/components/pagination/pagination.component';
 import { SpinnerComponent } from '../../../../shared/components/spinner/spinner.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
-import { ApiError } from '../../../../shared/models/api-error.model';
+import { ApiError } from '../../../../core/http/api-error.model';
 import { PageResponse } from '../../../../shared/models/page-response.model';
 import { CountryNamePipe } from '../../../../shared/pipes/country-name.pipe';
 import {
@@ -83,10 +87,12 @@ type StockStatus = 'out' | 'low' | 'ok';
   selector: 'app-book-list',
   imports: [
     ReactiveFormsModule,
+    RouterLink,
     CurrencyPipe,
     DecimalPipe,
     CountryNamePipe,
     AlertComponent,
+    ConfirmModalComponent,
     EmptyStateComponent,
     PaginationComponent,
     SpinnerComponent,
@@ -100,6 +106,8 @@ export class BookListComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly bookService = inject(BookService);
+  private readonly toasts = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
   protected readonly thresholdMin = LOW_STOCK_THRESHOLD_MIN;
@@ -112,6 +120,7 @@ export class BookListComponent {
     { label: 'Stock', sortField: 'stock_quantity', numeric: true },
     { label: 'Costo (USD)', sortField: 'cost_usd', numeric: true },
     { label: 'Precio de venta', numeric: true },
+    { label: 'Acciones' },
   ];
 
   protected readonly sortableColumns = this.columns.filter((column) => column.sortField);
@@ -125,6 +134,15 @@ export class BookListComponent {
     initialValue: parseBookListQuery(this.route.snapshot.queryParamMap),
   });
 
+  // Vista actual del listado, enviada como origen a detalle y edición para volver con filtros y página.
+  protected readonly fromState = computed(() => ({
+    from: this.router.serializeUrl(
+      this.router.createUrlTree(['/books'], { queryParams: toQueryParams(this.query()) }),
+    ),
+  }));
+
+  protected readonly pendingDelete = signal<Book | null>(null);
+  protected readonly deleting = signal(false);
   protected readonly pageData = signal<PageResponse<Book> | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<ApiError | null>(null);
@@ -174,6 +192,15 @@ export class BookListComponent {
       default:
         return 'No se pudieron cargar los libros';
     }
+  });
+
+  // Sin respuesta del servidor se muestra el mensaje de conexión; en el resto, el del backend.
+  protected readonly errorDetail = computed(() => {
+    const error = this.error();
+    if (!error) {
+      return null;
+    }
+    return [0, 502, 504].includes(error.status) ? apiErrorMessage(error) : error.message;
   });
 
   constructor() {
@@ -244,6 +271,43 @@ export class BookListComponent {
   protected clearFilters(): void {
     this.form.reset();
     this.navigate({ ...this.query(), page: 0, filter: 'all', category: null, threshold: null });
+  }
+
+  protected askDelete(book: Book): void {
+    this.pendingDelete.set(book);
+  }
+
+  protected cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  protected confirmDelete(): void {
+    const book = this.pendingDelete();
+    // Una sola petición en vuelo aunque se haga doble clic en "Eliminar".
+    if (!book || this.deleting()) {
+      return;
+    }
+    this.deleting.set(true);
+    this.bookService
+      .delete(book.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.closeDeleteModal();
+          this.toasts.success('Libro eliminado');
+          this.refreshAfterRemoval();
+        },
+        error: (error: ApiError) => {
+          this.closeDeleteModal();
+          if (error.status === 404) {
+            // Otro usuario ya lo había borrado: se informa y se refresca el listado.
+            this.toasts.info('El libro ya había sido eliminado');
+            this.refreshAfterRemoval();
+          } else {
+            this.toasts.error(apiErrorMessage(error));
+          }
+        },
+      });
   }
 
   protected retry(): void {
@@ -335,6 +399,21 @@ export class BookListComponent {
       return;
     }
     this.pageData.set(page);
+  }
+
+  private closeDeleteModal(): void {
+    this.deleting.set(false);
+    this.pendingDelete.set(null);
+  }
+
+  // Si se vació la página (y no es la primera) se retrocede una; si no, se recarga la actual.
+  private refreshAfterRemoval(): void {
+    const query = this.query();
+    if ((this.pageData()?.content.length ?? 0) <= 1 && query.page > 0) {
+      this.navigate({ ...query, page: query.page - 1 });
+    } else {
+      this.reload$.next();
+    }
   }
 
   private navigate(query: BookListQuery, replaceUrl = false): void {

@@ -1,0 +1,55 @@
+<section class="breakdown" aria-labelledby="breakdown-title" data-testid="price-breakdown">
+  <h2 id="breakdown-title">Desglose del cálculo</h2>
+
+  @if (isFallback()) {
+    <app-alert
+      variant="warning"
+      data-testid="fallback-warning"
+      [title]="
+        'Se usó una tasa de respaldo del ' + rateDateLabel() + '; puede no estar actualizada'
+      "
+    />
+  }
+
+  <dl class="breakdown__list">
+    <div>
+      <dt>Costo</dt>
+      <dd data-testid="bd-cost-usd">{{ costUsd() }}</dd>
+    </div>
+    <div>
+      <dt>Tasa aplicada</dt>
+      <dd data-testid="bd-rate">{{ rate() }}</dd>
+    </div>
+    <div>
+      <dt>Costo en moneda local</dt>
+      <dd data-testid="bd-cost-local">{{ costLocal() }}</dd>
+    </div>
+    <div>
+      <dt>Margen</dt>
+      <dd data-testid="bd-margin">{{ margin() }}</dd>
+    </div>
+    <div class="breakdown__total">
+      <dt>Precio final</dt>
+      <dd data-testid="bd-selling-price">{{ sellingPrice() }}</dd>
+    </div>
+  </dl>
+
+  <dl class="breakdown__meta">
+    <div>
+      <dt>Origen de la tasa</dt>
+      <dd data-testid="bd-rate-source">
+        {{ isFallback() ? 'Respaldo (FALLBACK)' : 'En vivo (LIVE)' }}
+      </dd>
+    </div>
+    <div>
+      <dt>Fecha de la tasa</dt>
+      <dd data-testid="bd-rate-date">{{ rateDateLabel() }}</dd>
+    </div>
+    <div>
+      <dt>Calculado el</dt>
+      <dd data-testid="bd-timestamp">
+        {{ result().calculation_timestamp | date: 'dd/MM/yyyy HH:mm:ss' }}
+      </dd>
+    </div>
+  </dl>
+</section>

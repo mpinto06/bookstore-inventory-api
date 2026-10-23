@@ -1,0 +1,186 @@
+<header class="page-header">
+  <a class="back-link" [routerLink]="backTree" data-testid="back-link">‹ Volver</a>
+  <h1>{{ isEdit ? 'Editar libro' : 'Nuevo libro' }}</h1>
+</header>
+
+@switch (loadState()) {
+  @case ('loading') {
+    <app-spinner class="centered" size="lg" label="Cargando libro…" data-testid="form-loading" />
+  }
+  @case ('not-found') {
+    <app-empty-state
+      data-testid="form-not-found"
+      title="No encontramos este libro"
+      description="Puede que se haya eliminado o que el enlace no sea correcto."
+    >
+      <a class="btn btn--primary" routerLink="/books">Volver al listado</a>
+    </app-empty-state>
+  }
+  @case ('error') {
+    <app-alert
+      data-testid="form-load-error"
+      title="No se pudo cargar el libro"
+      [message]="loadError()?.message ?? null"
+      [showRetry]="true"
+      (retry)="reload()"
+    />
+  }
+  @default {
+    @if (isEdit) {
+      <app-alert
+        variant="warning"
+        data-testid="price-reset-notice"
+        title="Si cambias el costo o el país del proveedor, el precio de venta se borra y hay que recalcularlo."
+      />
+    }
+
+    <form
+      class="book-form"
+      novalidate
+      data-testid="book-form"
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+    >
+      <div class="form-field book-form__wide">
+        <label class="form-label" for="field-title">Título</label>
+        <input
+          id="field-title"
+          class="form-control"
+          type="text"
+          formControlName="title"
+          autocomplete="off"
+          data-testid="field-title"
+          aria-describedby="error-title"
+          [attr.aria-invalid]="fieldError('title') ? 'true' : null"
+        />
+        <p id="error-title" class="form-error" data-testid="error-title">
+          {{ fieldError('title') }}
+        </p>
+      </div>
+
+      <div class="form-field book-form__wide">
+        <label class="form-label" for="field-author">Autor</label>
+        <input
+          id="field-author"
+          class="form-control"
+          type="text"
+          formControlName="author"
+          autocomplete="off"
+          data-testid="field-author"
+          aria-describedby="error-author"
+          [attr.aria-invalid]="fieldError('author') ? 'true' : null"
+        />
+        <p id="error-author" class="form-error" data-testid="error-author">
+          {{ fieldError('author') }}
+        </p>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="field-isbn">ISBN</label>
+        <input
+          id="field-isbn"
+          class="form-control mono"
+          type="text"
+          formControlName="isbn"
+          autocomplete="off"
+          data-testid="field-isbn"
+          aria-describedby="hint-isbn error-isbn"
+          [attr.aria-invalid]="fieldError('isbn') ? 'true' : null"
+        />
+        <p id="hint-isbn" class="form-hint">ISBN-10 o ISBN-13, con o sin guiones.</p>
+        <p id="error-isbn" class="form-error" data-testid="error-isbn">{{ fieldError('isbn') }}</p>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="field-category">Categoría</label>
+        <input
+          id="field-category"
+          class="form-control"
+          type="text"
+          formControlName="category"
+          autocomplete="off"
+          data-testid="field-category"
+          aria-describedby="error-category"
+          [attr.aria-invalid]="fieldError('category') ? 'true' : null"
+        />
+        <p id="error-category" class="form-error" data-testid="error-category">
+          {{ fieldError('category') }}
+        </p>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="field-cost_usd">Costo (USD)</label>
+        <input
+          id="field-cost_usd"
+          class="form-control"
+          type="number"
+          inputmode="decimal"
+          step="0.01"
+          formControlName="cost_usd"
+          data-testid="field-cost_usd"
+          aria-describedby="hint-cost error-cost_usd"
+          [attr.aria-invalid]="fieldError('cost_usd') ? 'true' : null"
+        />
+        <p id="hint-cost" class="form-hint">Entre 0,01 y 99.999.999,99, con hasta 2 decimales.</p>
+        <p id="error-cost_usd" class="form-error" data-testid="error-cost_usd">
+          {{ fieldError('cost_usd') }}
+        </p>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="field-stock_quantity">Stock</label>
+        <input
+          id="field-stock_quantity"
+          class="form-control"
+          type="number"
+          inputmode="numeric"
+          step="1"
+          formControlName="stock_quantity"
+          data-testid="field-stock_quantity"
+          aria-describedby="hint-stock error-stock_quantity"
+          [attr.aria-invalid]="fieldError('stock_quantity') ? 'true' : null"
+        />
+        <p id="hint-stock" class="form-hint">Unidades enteras, de 0 a 1.000.000.</p>
+        <p id="error-stock_quantity" class="form-error" data-testid="error-stock_quantity">
+          {{ fieldError('stock_quantity') }}
+        </p>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="field-supplier_country">País del proveedor</label>
+        <select
+          id="field-supplier_country"
+          class="form-control"
+          formControlName="supplier_country"
+          data-testid="field-supplier_country"
+          aria-describedby="error-supplier_country"
+          [attr.aria-invalid]="fieldError('supplier_country') ? 'true' : null"
+        >
+          <option value="" disabled>Selecciona un país</option>
+          @for (country of countries; track country.code) {
+            <option [value]="country.code">{{ country.name }} ({{ country.code }})</option>
+          }
+        </select>
+        <p id="error-supplier_country" class="form-error" data-testid="error-supplier_country">
+          {{ fieldError('supplier_country') }}
+        </p>
+      </div>
+
+      <div class="book-form__actions book-form__wide">
+        <button
+          type="submit"
+          class="btn btn--primary"
+          data-testid="form-submit"
+          [disabled]="submitting()"
+          [attr.aria-busy]="submitting()"
+        >
+          @if (submitting()) {
+            <app-spinner size="sm" label="Guardando…" />
+          }
+          {{ isEdit ? 'Guardar cambios' : 'Crear libro' }}
+        </button>
+        <a class="btn" data-testid="form-cancel" [routerLink]="backTree">Cancelar</a>
+      </div>
+    </form>
+  }
+}

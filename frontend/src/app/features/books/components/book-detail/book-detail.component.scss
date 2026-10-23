@@ -1,0 +1,89 @@
+@use 'mixins' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 48rem;
+}
+
+.back-link {
+  align-self: flex-start;
+  padding: var(--space-1) 0;
+  font-size: var(--font-size-sm);
+}
+
+.centered {
+  display: flex;
+  padding: var(--space-7);
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+
+  h1 {
+    font-size: var(--font-size-xl);
+    overflow-wrap: anywhere;
+  }
+
+  &__author {
+    color: var(--color-text-muted);
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+}
+
+.card {
+  @include card;
+  padding: var(--space-4);
+
+  @include respond-to(md) {
+    padding: var(--space-5);
+  }
+}
+
+.data {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+
+  @include respond-to(md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4) var(--space-5);
+  }
+
+  dt {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: var(--font-weight-medium);
+    overflow-wrap: anywhere;
+  }
+}
+
+.price-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+
+  p {
+    flex: 1 1 16rem;
+    color: var(--color-text-muted);
+  }
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+}

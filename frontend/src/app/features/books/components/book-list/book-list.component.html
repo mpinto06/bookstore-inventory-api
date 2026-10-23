@@ -103,7 +103,7 @@
   <app-alert
     data-testid="books-error"
     [title]="errorTitle()"
-    [message]="err.message"
+    [message]="errorDetail()"
     [showRetry]="true"
     (retry)="retry()"
   />
@@ -169,7 +169,13 @@
           @for (book of page.content; track book.id) {
             <tr data-testid="book-row">
               <td class="cell-title">
-                <span class="book-title">{{ book.title }}</span>
+                <a
+                  class="book-title book-link"
+                  data-testid="book-link"
+                  [routerLink]="['/books', book.id]"
+                  [state]="fromState()"
+                  >{{ book.title }}</a
+                >
                 <span class="book-author">{{ book.author }}</span>
               </td>
               <td class="mono" data-label="ISBN">{{ book.isbn }}</td>
@@ -195,7 +201,9 @@
                   }
                 }
               </td>
-              <td class="numeric" data-label="Costo (USD)">{{ book.cost_usd | currency: 'USD' }}</td>
+              <td class="numeric" data-label="Costo (USD)">
+                {{ book.cost_usd | currency: 'USD' }}
+              </td>
               <td class="numeric" data-label="Precio de venta" data-testid="book-price">
                 @if (book.selling_price_local !== null && book.selling_currency) {
                   {{ book.selling_price_local | currency: book.selling_currency }}
@@ -203,6 +211,29 @@
                   <span aria-hidden="true">—</span>
                   <span class="not-calculated">Aún no calculado</span>
                 }
+              </td>
+              <td class="cell-actions">
+                <a
+                  class="btn btn--small"
+                  data-testid="book-edit"
+                  [routerLink]="['/books', book.id, 'edit']"
+                  [state]="fromState()"
+                  [attr.aria-label]="'Editar ' + book.title"
+                >
+                  Editar
+                </a>
+                <button
+                  type="button"
+                  class="btn btn--small btn--danger-soft"
+                  data-testid="book-delete"
+                  [attr.aria-label]="'Eliminar ' + book.title"
+                  (click)="askDelete(book)"
+                >
+                  <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
+                  </svg>
+                  Eliminar
+                </button>
               </td>
             </tr>
           }
@@ -240,5 +271,18 @@
     data-testid="empty-all"
     title="Aún no hay libros"
     description="Cuando se registren libros en el inventario aparecerán aquí."
+  />
+}
+
+@if (pendingDelete(); as book) {
+  <app-confirm-modal
+    title="Eliminar libro"
+    confirmLabel="Eliminar"
+    [message]="
+      '¿Seguro que quieres eliminar «' + book.title + '»? Esta acción no se puede deshacer.'
+    "
+    [busy]="deleting()"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
   />
 }

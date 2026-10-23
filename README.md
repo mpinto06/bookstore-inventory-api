@@ -106,18 +106,87 @@ frontend/
     ├── styles/                     _variables.scss (tokens CSS), _mixins.scss, styles.scss (entrada)
     └── app/
         ├── app.component.ts, app.config.ts, app.routes.ts
-        ├── core/http/              error.interceptor.ts (HttpErrorResponse -> ApiError)
-        ├── shared/
-        │   ├── components/         alert, empty-state, pagination, spinner, status-badge
-        │   ├── models/             ApiError, FieldError, PageResponse<T> (solo interfaces)
+        ├── core/                   singletons globales
+        │   ├── http/               error.interceptor.ts (HttpErrorResponse -> ApiError), api-error.model.ts,
+        │   │                       api-error-message.ts (status -> mensaje en español)
+        │   └── ui/                 toast.service.ts
+        ├── shared/                 piezas tontas: sin servicios, solo input()/output()
+        │   ├── components/         alert, confirm-modal, empty-state, pagination, spinner, status-badge
+        │   ├── models/             PageResponse<T> (solo interfaces)
         │   └── pipes/              countryName (ISO-2 -> nombre del país)
-        ├── layout/                 header, footer, main-layout (<router-outlet>)
+        ├── layout/                 header, footer, main-layout (<router-outlet>), toast-container
         └── features/books/
-            ├── books.routes.ts     cargado con loadChildren
-            ├── models/             Book, lista blanca de sort, query del listado, constantes
+            ├── books.routes.ts     cargado con loadChildren; cada pantalla con loadComponent
+            ├── models/             Book, BookPayload, PriceCalculation, sort, query del listado, países ISO-2
+            ├── navigation/         id de ruta válido y URL de retorno (state.from)
             ├── services/           book.service.ts (HttpClient)
-            └── components/book-list/  componente smart + saneado de la URL y su guard
+            ├── validators/         ISBN, costo, stock, NUL, país (réplica de las reglas del backend)
+            └── components/         book-list, book-form (alta y edición), book-detail, price-breakdown
 ```
+
+### Rutas
+
+| Ruta | Pantalla |
+|------|----------|
+| `/books` | Listado con paginación, orden y filtros en la URL; enlaces a detalle, edición y borrado |
+| `/books/new` | Alta (`BookFormComponent`) |
+| `/books/:id` | Detalle, cálculo de precio y borrado |
+| `/books/:id/edit` | Edición (`BookFormComponent`, el mismo componente que el alta) |
+
+Un `:id` que no es un entero positivo (`/books/abc`) o que no existe (404) muestra "No encontramos este
+libro" con un enlace al listado; nunca una pantalla en blanco.
+
+**Volver al origen:** el listado, el detalle y el enlace "Nuevo libro" del encabezado pasan
+`state: { from: <url actual> }`. Al guardar, cancelar o borrar se vuelve a esa URL (conserva filtros y
+página). Solo se acepta si empieza por `/books`; si falta o es inválida, se vuelve a `/books`.
+
+### Flujos
+
+- **Alta:** el formulario valida en el cliente con las mismas reglas que `BookRequest` (título/autor
+  obligatorios y <= 255, categoría obligatoria y <= 100, ISBN-10/13 con dígito verificador y <= 32
+  caracteres, costo 0,01..99.999.999,99 con máx. 2 decimales, stock entero 0..1.000.000, país ISO-2 elegido
+  de una lista, sin carácter NUL). Con el formulario inválido no se envía ninguna petición. El botón se
+  deshabilita durante el envío, así que un doble clic genera una sola petición. Éxito: toast y vuelta al
+  origen.
+- **Errores del servidor en el formulario:** `400` con `field_errors` -> cada mensaje se asigna al control
+  del mismo nombre (los controles usan los nombres snake_case de la API) y se limpia al editar ese campo;
+  `409` (ISBN duplicado) -> error en el campo ISBN; `422`, `503`, `500` o sin conexión -> toast.
+- **Edición:** carga el libro (spinner; 404 -> mensaje con enlace al listado). El `PUT` es un reemplazo
+  completo. Cambiar el costo o el país del proveedor borra el precio de venta (lo hace el backend); el
+  formulario lo avisa.
+- **Borrado:** modal de confirmación sobre `<dialog>` nativo (foco inicial en "Cancelar", Escape y clic en
+  el fondo cancelan). Desde el listado, si la página queda vacía y no es la primera, se retrocede una página;
+  un `404` (ya borrado por otro) se muestra como aviso informativo y se refresca. Desde el detalle se vuelve
+  al listado.
+- **Cálculo de precio** (detalle): botón con spinner, una sola petición aunque se haga doble clic. Muestra
+  el desglose (costo, tasa `1 USD = X MONEDA`, costo local, margen, precio final, origen y fecha de la tasa).
+  Con `rate_source = FALLBACK` aparece un aviso con la fecha de la tasa. El precio del libro se actualiza sin
+  recargar. `422` (país sin moneda) y `503` (moneda sin tasa) se muestran como toast y no dejan desglose.
+- **Avisos y cargas:** `ToastService` (core) muestra como máximo 4 toasts, sin duplicar el mismo mensaje,
+  con cierre a los 5 s (8 s los errores) o manual. Los loaders son puntuales por operación (señales de
+  `loading` en cada componente); no hay loader global con interceptor.
+
+### Reglas de arquitectura
+
+- `core/` contiene los singletons globales (HTTP, `ToastService`). **`core` no importa de `features` ni de
+  `shared`.**
+- `features/` **puede** inyectar los singletons de `core`. Nunca al revés.
+- `shared/` son componentes *dumb*: **no inyectan servicios**, solo `input()`/`output()`; `shared/models`
+  solo contiene tipos.
+- `layout/` es el armazón (cabecera, pie, `main-layout` y el contenedor de toasts).
+- Sin librerías de UI, de toasts ni de modales.
+
+### Tests del frontend
+
+```bash
+cd frontend
+npx ng test --watch=false       # Vitest + jsdom, sin backend
+```
+
+Cubren lo que tiene lógica: validadores (ISBN, costo, stock, NUL, país), `apiErrorMessage` por status,
+`ToastService` (cierre automático con timers falsos, máximo 4, deduplicación), URL de retorno e id de ruta,
+desglose de precio (LIVE/FALLBACK, moneda no soportada), interceptor, servicio de libros, listado y
+paginación.
 
 ## Tasas de cambio
 
@@ -458,9 +527,9 @@ solo aparece en errores de validación:
 ### Frontend
 
 - **Arquitectura por capas (`core` / `shared` / `layout` / `features`):** `core` contiene los singletons
-  globales (el interceptor HTTP) y nunca se importa desde `features` ni `shared`; `shared` solo tiene piezas
-  presentacionales (componentes *dumb* con `input()`/`output()`, un pipe y modelos que son solo interfaces),
-  sin servicios ni lógica de negocio; `layout` es el armazón (cabecera, pie y `router-outlet`); cada
+  globales (interceptor HTTP, `ToastService`) y no importa de `features` ni de `shared`; `features` sí puede
+  inyectarlos; `shared` solo tiene piezas presentacionales (componentes *dumb* con `input()`/`output()`, un
+  pipe y modelos que son solo interfaces), sin servicios ni lógica de negocio; `layout` es el armazón (cabecera, pie y `router-outlet`); cada
   `feature` agrupa sus componentes *smart*, servicios, modelos y rutas, y se carga de forma diferida
   (`loadChildren`). Las dependencias van en un solo sentido, así que una feature se puede quitar sin tocar
   el resto.

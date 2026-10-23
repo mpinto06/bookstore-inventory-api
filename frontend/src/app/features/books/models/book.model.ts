@@ -18,3 +18,32 @@ export interface Book {
   created_at: string;
   updated_at: string;
 }
+
+// Cuerpo de POST y PUT /books: los mismos nombres que BookRequest (los controles del formulario también).
+export interface BookPayload {
+  title: string;
+  author: string;
+  isbn: string;
+  cost_usd: number;
+  stock_quantity: number;
+  category: string;
+  supplier_country: string;
+}
+
+export type RateSource = 'LIVE' | 'FALLBACK';
+
+// Respuesta de POST /books/{id}/calculate-price.
+export interface PriceCalculation {
+  book_id: number;
+  cost_usd: number;
+  exchange_rate: number;
+  cost_local: number;
+  margin_percentage: number;
+  selling_price_local: number;
+  currency: string;
+  // ISO-8601 (UTC)
+  calculation_timestamp: string;
+  rate_source: RateSource;
+  // yyyy-MM-dd
+  rate_date: string;
+}

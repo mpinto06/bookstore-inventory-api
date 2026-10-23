@@ -7,8 +7,9 @@ import {
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { ApiError } from '../../shared/models/api-error.model';
-import { NETWORK_ERROR_MESSAGE, errorInterceptor } from './error.interceptor';
+import { ApiError } from './api-error.model';
+import { NETWORK_ERROR_MESSAGE } from './api-error-message';
+import { errorInterceptor } from './error.interceptor';
 
 describe('errorInterceptor', () => {
   let client: HttpClient;
@@ -86,7 +87,7 @@ describe('errorInterceptor', () => {
 
     expect(error()).toMatchObject({
       status: 503,
-      message: 'El servicio no está disponible en este momento. Inténtalo de nuevo más tarde',
+      message: 'Servicio externo no disponible, intenta de nuevo en un momento',
     });
   });
 

@@ -1,0 +1,58 @@
+@use 'mixins' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 48rem;
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.back-link {
+  align-self: flex-start;
+  padding: var(--space-1) 0;
+  font-size: var(--font-size-sm);
+}
+
+.centered {
+  display: flex;
+  padding: var(--space-7);
+}
+
+.book-form {
+  @include card;
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+
+  @include respond-to(md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: var(--space-5);
+  }
+
+  &__wide {
+    @include respond-to(md) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+}
+
+// Sin mensaje no ocupa altura: el formulario no "salta" al aparecer un error.
+.form-error:empty {
+  display: none;
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+}
