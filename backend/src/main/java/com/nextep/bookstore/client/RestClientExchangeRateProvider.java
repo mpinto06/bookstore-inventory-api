@@ -42,7 +42,7 @@ class RestClientExchangeRateProvider implements ExchangeRateProvider {
 		}
 		catch (RuntimeException ex) {
 			// Red, timeout, status no 2xx, content-type inesperado o JSON ilegible.
-			// Sin el cuerpo de la respuesta (puede ser enorme) en el mensaje.
+			// No metemos el cuerpo de la respuesta en el mensaje porque puede ser enorme.
 			String detail = ex instanceof RestClientResponseException responseEx
 					? "status " + responseEx.getStatusCode().value() : abbreviate(ex.getMessage());
 			throw new ExchangeRateUnavailableException("No se pudo obtener la respuesta de la API de tasas ("
@@ -75,7 +75,7 @@ class RestClientExchangeRateProvider implements ExchangeRateProvider {
 		return message == null || message.length() <= 200 ? message : message.substring(0, 200) + "...";
 	}
 
-	// Solo los campos usados; provider, terms, WARNING_UPGRADE_TO_V6, time_last_updated... se ignoran.
+	// Solo los campos que usamos; provider, terms, WARNING_UPGRADE_TO_V6, time_last_updated... se ignoran.
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	record ApiResponse(String base, String date, Map<String, BigDecimal> rates) {
 	}

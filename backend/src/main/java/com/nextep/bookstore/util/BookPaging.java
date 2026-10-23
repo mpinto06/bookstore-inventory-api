@@ -69,7 +69,7 @@ public final class BookPaging {
 			case "desc" -> Sort.Order.desc(property);
 			default -> throw invalidSort();
 		};
-		// id como desempate para que la paginación sea estable
+		// id de desempate para que la paginación no cambie de orden entre páginas
 		return property.equals("id") ? Sort.by(order) : Sort.by(order, Sort.Order.asc("id"));
 	}
 

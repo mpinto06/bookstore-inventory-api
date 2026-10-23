@@ -11,9 +11,9 @@ import org.springframework.stereotype.Component;
 import com.nextep.bookstore.config.ExchangeRateProperties;
 import com.nextep.bookstore.service.ExchangeRateService;
 
-// Refresca las tasas al arrancar y cada día (por defecto 03:00 America/Caracas). Un fallo nunca se
+// Refresca las tasas al arrancar y cada día (por defecto 03:00 America/Caracas). Si falla, no se
 // propaga: la app sigue con las tasas que ya hay en la BD (el snapshot de V2 o el último refresco).
-// El upsert es idempotente, así que varias instancias no se estorbarían; se asume una sola instancia
+// El upsert es idempotente, así que varias instancias no se pisarían; igual se asume una sola
 // (no hay bloqueo distribuido).
 @Component
 @ConditionalOnProperty(name = "exchange-rate.refresh.enabled", havingValue = "true", matchIfMissing = true)

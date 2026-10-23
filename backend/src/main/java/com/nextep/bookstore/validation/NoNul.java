@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 
-// Rechaza el carácter NUL (código 0): PostgreSQL no lo admite en texto y daría un error.
+// Rechaza el carácter NUL (código 0): PostgreSQL no lo acepta en texto y tiraría un error.
 // Los nulos se consideran válidos aquí; de eso se encarga @NotBlank.
 @Documented
 @Constraint(validatedBy = NoNulValidator.class)

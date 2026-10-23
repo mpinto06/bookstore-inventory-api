@@ -28,7 +28,7 @@ public class OpenApiConfig {
 
 	private static final String API_ERROR_REF = "#/components/schemas/ApiError";
 
-	// Errores genéricos que cualquier endpoint puede devolver; cada endpoint solo documenta los específicos.
+	// Errores genéricos que cualquier endpoint puede devolver; cada endpoint documenta solo los suyos.
 	private static final Map<String, String> COMMON_ERRORS = Map.of(
 			"400", "Petición inválida: body, parámetros de consulta o id con datos incorrectos.",
 			"500", "Error inesperado del servidor (mensaje genérico; el detalle solo va al log).",
@@ -58,7 +58,7 @@ public class OpenApiConfig {
 				.forEach(item -> item.readOperations().forEach(this::addCommonErrors));
 	}
 
-	// Solo se añade si el endpoint no definió ya ese status (p. ej. el 503 propio de calculate-price).
+	// Solo se agrega si el endpoint no definió ya ese status (ej. el 503 propio de calculate-price).
 	private void addCommonErrors(Operation operation) {
 		COMMON_ERRORS.forEach((status, description) -> {
 			if (operation.getResponses().get(status) == null) {

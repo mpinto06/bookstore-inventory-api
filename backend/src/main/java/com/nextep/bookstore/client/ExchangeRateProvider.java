@@ -2,7 +2,7 @@ package com.nextep.bookstore.client;
 
 public interface ExchangeRateProvider {
 
-	// Lanza ExchangeRateUnavailableException ante cualquier fallo o respuesta inválida.
+	// Si algo sale mal o la respuesta no sirve, lanza ExchangeRateUnavailableException.
 	ExchangeRateSnapshot fetchLatest();
 
 }

@@ -148,7 +148,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return build(HttpStatus.BAD_REQUEST, "Parámetros inválidos", errors, new HttpHeaders(), request);
 	}
 
-	// Carrera entre dos altas/ediciones con el mismo ISBN: lo atrapa el índice único.
+	// Dos altas/ediciones con el mismo ISBN al mismo tiempo: lo agarra el índice único.
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ResponseEntity<Object> handleDataIntegrity(DataIntegrityViolationException ex, WebRequest request) {
 		if (mentionsConstraint(ex, ISBN_UNIQUE_CONSTRAINT)) {
@@ -158,7 +158,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return handleUnexpected(ex, request);
 	}
 
-	// Base de datos no disponible.
+	// La base de datos no responde.
 	@ExceptionHandler({ CannotCreateTransactionException.class, DataAccessResourceFailureException.class,
 			TransientDataAccessResourceException.class })
 	ResponseEntity<Object> handleServiceUnavailable(Exception ex, WebRequest request) {
@@ -184,7 +184,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				request);
 	}
 
-	// ---- Utilidades ----
+	// ---- Auxiliares ----
 
 	private ResponseEntity<Object> build(HttpStatusCode status, String message, List<FieldError> fieldErrors,
 			HttpHeaders headers, WebRequest request) {

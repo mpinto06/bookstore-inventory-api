@@ -16,7 +16,7 @@ import org.springframework.stereotype.Repository;
 
 import com.nextep.bookstore.model.StoredExchangeRate;
 
-// Acceso a exchange_rates con JdbcTemplate: el upsert ON CONFLICT es propio de PostgreSQL y no hace falta una entidad JPA.
+// Acceso a exchange_rates con JdbcTemplate: el upsert ON CONFLICT es de PostgreSQL y no vale la pena una entidad JPA.
 @Repository
 public class ExchangeRateRepository {
 
@@ -50,7 +50,7 @@ public class ExchangeRateRepository {
 		});
 	}
 
-	// Última tasa guardada (USD -> moneda) de una moneda, si existe.
+	// Última tasa guardada (USD -> moneda) para esa moneda, si existe.
 	public Optional<StoredExchangeRate> findByCurrency(String currency) {
 		if (currency == null) {
 			return Optional.empty();

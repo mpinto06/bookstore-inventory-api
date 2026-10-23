@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 class ExchangeRateConfig {
 
-	// Inyectable para controlar el TTL de la caché y la pausa tras un fallo en los tests
+	// Se inyecta para poder controlar en los tests el TTL de la caché y la pausa tras un fallo
 	@Bean
 	Clock clock() {
 		return Clock.systemUTC();

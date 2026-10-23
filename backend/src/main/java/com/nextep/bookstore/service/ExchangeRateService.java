@@ -44,7 +44,7 @@ public class ExchangeRateService {
 
 	private final Clock clock;
 
-	// Estado en memoria (sin tabla ni librerías): último resultado de fetchLatest() y último fallo.
+	// Estado en memoria (sin tabla ni librerías): lo último que devolvió fetchLatest() y el último fallo.
 	private final ReentrantLock refreshLock = new ReentrantLock();
 
 	private volatile CachedRates cache;
@@ -97,7 +97,7 @@ public class ExchangeRateService {
 		if (!inBackoff(now)) {
 			refreshLock.lock();
 			try {
-				// otro hilo pudo refrescar el caché (o fallar) mientras esperábamos el bloqueo
+				// puede que otro hilo ya refrescó el caché (o falló) mientras esperábamos el lock
 				now = clock.instant();
 				cached = fromCache(currency, now);
 				if (cached != null) {

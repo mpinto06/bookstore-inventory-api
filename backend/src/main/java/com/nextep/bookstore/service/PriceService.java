@@ -19,7 +19,7 @@ import com.nextep.bookstore.model.Book;
 import com.nextep.bookstore.repository.BookRepository;
 
 // Sin @Transactional a nivel de clase: la tasa puede requerir una llamada HTTP y no debe haber una
-// transacción (ni una conexión de BD) abierta durante ella. Solo la escritura final va en una transacción corta.
+// transacción (ni una conexión de BD) abierta durante ella. Solo el guardado final va en una transacción corta.
 @Service
 public class PriceService {
 
@@ -77,7 +77,7 @@ public class PriceService {
 			}
 		}
 		catch (IllegalArgumentException ex) {
-			// país que el JDK no reconoce: se trata igual que uno sin moneda
+			// país que el JDK no reconoce: lo tratamos igual que uno sin moneda
 		}
 		throw new NoLocalCurrencyException(country);
 	}

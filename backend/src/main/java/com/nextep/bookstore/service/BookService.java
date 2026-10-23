@@ -77,14 +77,14 @@ public class BookService {
 				.map(BookMapper::toResponse));
 	}
 
-	// Categorías distintas, en orden alfabético (para el filtro del frontend).
+	// Categorías sin repetir y en orden alfabético (las usa el filtro del frontend).
 	@Transactional(readOnly = true)
 	public List<String> categories() {
 		return repository.findDistinctCategories();
 	}
 
 	// Reemplazo completo. Si cambia cost_usd o supplier_country, el precio de venta calculado
-	// (selling_price_local y selling_currency) queda obsoleto: se pone en null y debe recalcularse.
+	// (selling_price_local y selling_currency) queda obsoleto: se deja en null y hay que recalcularlo.
 	@Transactional
 	public BookResponse update(Long id, BookRequest request) {
 		Book book = find(id);
@@ -107,7 +107,7 @@ public class BookService {
 			book.setSellingPriceLocal(null);
 			book.setSellingCurrency(null);
 		}
-		// flush explícito: una violación del índice único sale aquí, dentro del servicio
+		// flush explícito para que si el índice único falla, el error salga aquí en el servicio
 		return BookMapper.toResponse(repository.saveAndFlush(book));
 	}
 

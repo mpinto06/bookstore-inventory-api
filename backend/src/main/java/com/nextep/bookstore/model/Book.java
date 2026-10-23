@@ -52,7 +52,7 @@ public class Book {
 	@JdbcTypeCode(SqlTypes.CHAR)
 	private String supplierCountry;
 
-	// created_at (DEFAULT) y updated_at (trigger) los asigna la BD; Hibernate solo los lee de vuelta
+	// created_at (DEFAULT) y updated_at (trigger) los pone la BD; Hibernate solo los lee
 	@Generated(event = EventType.INSERT)
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private Instant createdAt;

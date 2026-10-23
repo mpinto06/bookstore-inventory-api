@@ -59,7 +59,7 @@ public class BookController implements BookApi {
 		return service.list(BookPaging.pageable(page, size, sort));
 	}
 
-	// Las rutas literales tienen prioridad sobre /{id}, por lo que no se interpretan como un id
+	// Las rutas literales ganan sobre /{id}, así que "search" o "low-stock" nunca se toman como un id
 	@GetMapping("/search")
 	@Override
 	public PageResponse<BookResponse> search(

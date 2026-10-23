@@ -6,7 +6,7 @@ import org.springframework.data.domain.Page;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-// Respuesta paginada propia: no se serializa Page de Spring Data para no acoplar el contrato JSON.
+// Respuesta paginada propia: no serializamos Page de Spring Data para no atar el JSON a una clase del framework.
 public record PageResponse<T>(
 		@Schema(description = "Elementos de la página") List<T> content,
 		@Schema(description = "Número de página actual, empezando en 0", example = "0") int page,
