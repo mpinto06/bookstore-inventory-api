@@ -1,14 +1,14 @@
 services:
   db:
     image: postgres:18
-    container_name: bookstore-db
     environment:
-      POSTGRES_DB: ${DB_NAME:-bookstore}
-      POSTGRES_USER: ${DB_USER:-bookstore}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-bookstore}
+      POSTGRES_DB: ${POSTGRES_DB:-bookstore}
+      POSTGRES_USER: ${POSTGRES_USER:-bookstore}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bookstore}
     ports:
-      # 5433 en el host (no 5432) para no chocar con una instancia local de PostgreSQL
-      - "${DB_PORT:-5433}:5432"
+      # Solo loopback. 5433 (no 5432) por defecto para no chocar con un PostgreSQL local y
+      # coincidir con el DB_URL por defecto del backend cuando se ejecuta con Maven.
+      - "127.0.0.1:${DB_HOST_PORT:-5433}:5432"
     volumes:
       # PostgreSQL 18+: la imagen guarda los datos bajo /var/lib/postgresql (no /data)
       - bookstore-db-data:/var/lib/postgresql
@@ -17,6 +17,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-bookstore}
+      DB_USER: ${POSTGRES_USER:-bookstore}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-bookstore}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-4200}:8080"
+    restart: unless-stopped
 
 volumes:
   bookstore-db-data:

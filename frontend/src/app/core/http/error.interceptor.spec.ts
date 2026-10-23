@@ -8,7 +8,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { ApiError } from './api-error.model';
-import { NETWORK_ERROR_MESSAGE } from './api-error-message';
+import { NETWORK_ERROR_MESSAGE, apiErrorMessage } from './api-error-message';
 import { errorInterceptor } from './error.interceptor';
 
 describe('errorInterceptor', () => {
@@ -78,6 +78,18 @@ describe('errorInterceptor', () => {
       path: '/api/books',
     });
     expect(typeof (error() as ApiError).timestamp).toBe('string');
+  });
+
+  it('trata un 504 de nginx con cuerpo HTML como error de conexión para el usuario', () => {
+    const error = requestBooks();
+
+    http.expectOne('/api/books').flush('<html><body>504 Gateway Time-out</body></html>', {
+      status: 504,
+      statusText: 'Gateway Time-out',
+    });
+
+    expect(error()).toMatchObject({ status: 504, path: '/api/books' });
+    expect(apiErrorMessage(error() as ApiError)).toBe(NETWORK_ERROR_MESSAGE);
   });
 
   it('da un mensaje claro de servicio no disponible para un 503 sin ApiError', () => {

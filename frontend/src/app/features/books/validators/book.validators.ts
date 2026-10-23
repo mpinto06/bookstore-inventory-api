@@ -113,9 +113,32 @@ export const isbnValidator: ValidatorFn = (control: AbstractControl): Validation
   return isValidIsbn(value) ? null : { isbn: true };
 };
 
+// Costo escrito en formato español: coma decimal y punto opcional como separador de miles ("1.234,56").
+// Devuelve NaN si el texto no tiene ese formato.
+export function parseCostInput(text: string): number {
+  const trimmed = text.trim();
+  if (!/^(\d+|\d{1,3}(\.\d{3})+)(,\d+)?$/.test(trimmed)) {
+    return Number.NaN;
+  }
+  return Number(trimmed.replaceAll('.', '').replace(',', '.'));
+}
+
+// Número del backend -> texto del campo ("15.99" -> "15,99"), sin separador de miles.
+export function formatCostInput(value: number): string {
+  return String(value).replace('.', ',');
+}
+
 export const costValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
   if (isEmpty(control.value)) {
     return null;
+  }
+  if (typeof control.value === 'string') {
+    const parsed = parseCostInput(control.value);
+    if (Number.isNaN(parsed)) {
+      return { cost_format: true };
+    }
+    const parsedCode = costError(parsed);
+    return parsedCode ? { [`cost_${parsedCode}`]: true } : null;
   }
   const code = costError(Number(control.value));
   return code ? { [`cost_${code}`]: true } : null;

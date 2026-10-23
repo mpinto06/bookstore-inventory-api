@@ -33,6 +33,8 @@ import {
   STOCK_MAX,
   TEXT_MAX_LENGTH,
   costValidator,
+  formatCostInput,
+  parseCostInput,
   countryValidator,
   isbnValidator,
   noNul,
@@ -45,7 +47,7 @@ type BookForm = FormGroup<{
   title: FormControl<string>;
   author: FormControl<string>;
   isbn: FormControl<string>;
-  cost_usd: FormControl<number | null>;
+  cost_usd: FormControl<string>;
   stock_quantity: FormControl<number | null>;
   category: FormControl<string>;
   supplier_country: FormControl<string>;
@@ -83,6 +85,7 @@ const ERROR_MESSAGES: Readonly<Record<FieldName, Readonly<Record<string, string>
   },
   cost_usd: {
     required: 'El costo es obligatorio.',
+    cost_format: 'Escribe el costo con coma decimal, por ejemplo 15,99.',
     cost_min: 'El costo mínimo es 0,01 USD.',
     cost_max: 'El costo máximo es 99.999.999,99 USD.',
     cost_decimals: 'El costo admite como máximo 2 decimales.',
@@ -146,7 +149,10 @@ export class BookFormComponent {
       validators: [notBlank, Validators.maxLength(TEXT_MAX_LENGTH), noNul],
     }),
     isbn: new FormControl('', { nonNullable: true, validators: [notBlank, isbnValidator] }),
-    cost_usd: new FormControl<number | null>(null, [Validators.required, costValidator]),
+    cost_usd: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, costValidator],
+    }),
     stock_quantity: new FormControl<number | null>(null, [Validators.required, stockValidator]),
     category: new FormControl('', {
       nonNullable: true,
@@ -224,7 +230,7 @@ export class BookFormComponent {
       title: value.title.trim(),
       author: value.author.trim(),
       isbn: value.isbn.trim(),
-      cost_usd: Number(value.cost_usd),
+      cost_usd: parseCostInput(value.cost_usd),
       stock_quantity: Number(value.stock_quantity),
       category: value.category.trim(),
       supplier_country: value.supplier_country.toUpperCase(),
@@ -300,7 +306,7 @@ export class BookFormComponent {
             title: book.title,
             author: book.author,
             isbn: book.isbn,
-            cost_usd: book.cost_usd,
+            cost_usd: formatCostInput(book.cost_usd),
             stock_quantity: book.stock_quantity,
             category: book.category,
             supplier_country: book.supplier_country,

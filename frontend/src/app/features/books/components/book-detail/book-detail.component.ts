@@ -101,6 +101,10 @@ export class BookDetailComponent {
       .subscribe({
         next: (result) => {
           this.calculating.set(false);
+          const previous = this.book();
+          const unchanged =
+            previous?.selling_price_local === result.selling_price_local &&
+            previous?.selling_currency === result.currency;
           this.priceResult.set(result);
           this.book.update((book) =>
             book
@@ -111,7 +115,11 @@ export class BookDetailComponent {
                 }
               : book,
           );
-          this.toasts.success('Precio de venta calculado');
+          if (unchanged) {
+            this.toasts.info('No hubo cambios en el precio de venta');
+          } else {
+            this.toasts.success('Precio de venta calculado');
+          }
         },
         error: (error: ApiError) => {
           this.calculating.set(false);

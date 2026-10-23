@@ -3,13 +3,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 // Las acciones opcionales (p. ej. un botón para limpiar filtros) se proyectan como contenido.
 @Component({
   selector: 'app-empty-state',
-  template: `
-    <p class="empty-state__title" data-testid="empty-state-title">{{ title() }}</p>
-    @if (description()) {
-      <p class="empty-state__description">{{ description() }}</p>
-    }
-    <ng-content />
-  `,
+  templateUrl: './empty-state.component.html',
   styleUrl: './empty-state.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

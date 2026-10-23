@@ -8,16 +8,7 @@ import { ToastContainerComponent } from '../toast-container/toast-container.comp
 @Component({
   selector: 'app-main-layout',
   imports: [RouterOutlet, HeaderComponent, FooterComponent, ToastContainerComponent],
-  template: `
-    <!-- Botón y no enlace #ancla: con <base href="/"> un href="#..." navegaría a la raíz y perdería la URL -->
-    <button type="button" class="skip-link" (click)="main.focus()">Saltar al contenido</button>
-    <app-header />
-    <main #main class="main" tabindex="-1">
-      <router-outlet />
-    </main>
-    <app-footer />
-    <app-toast-container />
-  `,
+  templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -4,7 +4,7 @@ export type StatusBadgeVariant = 'neutral' | 'warning' | 'danger' | 'success';
 
 @Component({
   selector: 'app-status-badge',
-  template: '<ng-content />',
+  templateUrl: './status-badge.component.html',
   styleUrl: './status-badge.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[attr.data-variant]': 'variant()' },

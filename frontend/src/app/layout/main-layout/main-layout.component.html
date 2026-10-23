@@ -1,0 +1,8 @@
+<!-- Botón y no enlace #ancla: con <base href="/"> un href="#..." navegaría a la raíz y perdería la URL -->
+<button type="button" class="skip-link" (click)="main.focus()">Saltar al contenido</button>
+<app-header />
+<main #main class="main" tabindex="-1">
+  <router-outlet />
+</main>
+<app-footer />
+<app-toast-container />

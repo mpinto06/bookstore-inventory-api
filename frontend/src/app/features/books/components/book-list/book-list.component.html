@@ -160,7 +160,9 @@
                   </button>
                 </th>
               } @else {
-                <th scope="col" [class.numeric]="column.numeric">{{ column.label }}</th>
+                <th scope="col" [class.numeric]="column.numeric" [class.centered]="column.centered">
+                  {{ column.label }}
+                </th>
               }
             }
           </tr>
@@ -213,27 +215,57 @@
                 }
               </td>
               <td class="cell-actions">
-                <a
-                  class="btn btn--small"
-                  data-testid="book-edit"
-                  [routerLink]="['/books', book.id, 'edit']"
-                  [state]="fromState()"
-                  [attr.aria-label]="'Editar ' + book.title"
-                >
-                  Editar
-                </a>
-                <button
-                  type="button"
-                  class="btn btn--small btn--danger-soft"
-                  data-testid="book-delete"
-                  [attr.aria-label]="'Eliminar ' + book.title"
-                  (click)="askDelete(book)"
-                >
-                  <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
-                  </svg>
-                  Eliminar
-                </button>
+                <div class="row-actions">
+                  <button
+                    type="button"
+                    class="btn btn--small"
+                    data-testid="book-calculate"
+                    [attr.aria-label]="'Calcular precio de ' + book.title"
+                    [attr.aria-busy]="calculatingId() === book.id"
+                    [disabled]="calculatingId() !== null"
+                    (click)="calculatePrice(book)"
+                  >
+                    @if (calculatingId() === book.id) {
+                      <app-spinner size="sm" label="Calculando…" />
+                    } @else {
+                      <svg
+                        class="btn__icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                        focusable="false"
+                      >
+                        <path
+                          d="M6 3h12v18H6zM9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"
+                        />
+                      </svg>
+                    }
+                    Calcular
+                  </button>
+                  <a
+                    class="btn btn--small"
+                    data-testid="book-edit"
+                    [routerLink]="['/books', book.id, 'edit']"
+                    [state]="fromState()"
+                    [attr.aria-label]="'Editar ' + book.title"
+                  >
+                    <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4" />
+                    </svg>
+                    Editar
+                  </a>
+                  <button
+                    type="button"
+                    class="btn btn--small btn--danger-soft"
+                    data-testid="book-delete"
+                    [attr.aria-label]="'Eliminar ' + book.title"
+                    (click)="askDelete(book)"
+                  >
+                    <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" />
+                    </svg>
+                    Eliminar
+                  </button>
+                </div>
               </td>
             </tr>
           }

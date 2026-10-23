@@ -70,6 +70,7 @@ interface TableColumn {
   label: string;
   sortField?: BookSortField;
   numeric?: boolean;
+  centered?: boolean;
 }
 
 interface CategoriesState {
@@ -120,7 +121,7 @@ export class BookListComponent {
     { label: 'Stock', sortField: 'stock_quantity', numeric: true },
     { label: 'Costo (USD)', sortField: 'cost_usd', numeric: true },
     { label: 'Precio de venta', numeric: true },
-    { label: 'Acciones' },
+    { label: 'Acciones', centered: true },
   ];
 
   protected readonly sortableColumns = this.columns.filter((column) => column.sortField);
@@ -143,6 +144,7 @@ export class BookListComponent {
 
   protected readonly pendingDelete = signal<Book | null>(null);
   protected readonly deleting = signal(false);
+  protected readonly calculatingId = signal<number | null>(null);
   protected readonly pageData = signal<PageResponse<Book> | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<ApiError | null>(null);
@@ -306,6 +308,50 @@ export class BookListComponent {
           } else {
             this.toasts.error(apiErrorMessage(error));
           }
+        },
+      });
+  }
+
+  protected calculatePrice(book: Book): void {
+    // Una sola petición en vuelo aunque se haga doble clic.
+    if (this.calculatingId() !== null) {
+      return;
+    }
+    this.calculatingId.set(book.id);
+    this.bookService
+      .calculatePrice(book.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.calculatingId.set(null);
+          const unchanged =
+            book.selling_price_local === result.selling_price_local &&
+            book.selling_currency === result.currency;
+          this.pageData.update((page) =>
+            page
+              ? {
+                  ...page,
+                  content: page.content.map((item) =>
+                    item.id === book.id
+                      ? {
+                          ...item,
+                          selling_price_local: result.selling_price_local,
+                          selling_currency: result.currency,
+                        }
+                      : item,
+                  ),
+                }
+              : page,
+          );
+          if (unchanged) {
+            this.toasts.info(`No hubo cambios en el precio de «${book.title}»`);
+          } else {
+            this.toasts.success(`Precio de «${book.title}» calculado`);
+          }
+        },
+        error: (error: ApiError) => {
+          this.calculatingId.set(null);
+          this.toasts.error(apiErrorMessage(error));
         },
       });
   }

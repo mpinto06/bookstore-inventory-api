@@ -1,0 +1,11 @@
+<div class="alert__body">
+  <p class="alert__title" data-testid="alert-title">{{ title() }}</p>
+  @if (message()) {
+    <p class="alert__message" data-testid="alert-message">{{ message() }}</p>
+  }
+</div>
+@if (showRetry()) {
+  <button type="button" class="btn" data-testid="alert-retry" (click)="retry.emit()">
+    Reintentar
+  </button>
+}

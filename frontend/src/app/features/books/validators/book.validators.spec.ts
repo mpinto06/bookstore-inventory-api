@@ -3,6 +3,8 @@ import { FormControl } from '@angular/forms';
 import {
   costError,
   costValidator,
+  formatCostInput,
+  parseCostInput,
   countryValidator,
   isValidIsbn,
   isbnValidator,
@@ -117,5 +119,34 @@ describe('validadores de texto y país', () => {
     expect(countryValidator(new FormControl('ve'))).toBeNull();
     expect(countryValidator(new FormControl('ZZ'))).toEqual({ country: true });
     expect(countryValidator(new FormControl('ESP'))).toEqual({ country: true });
+  });
+});
+
+describe('costo en formato español', () => {
+  it.each([
+    ['15,99', 15.99],
+    ['1.234,56', 1234.56],
+    ['1.234', 1234],
+    ['42', 42],
+    [' 0,5 ', 0.5],
+  ])('parsea "%s"', (text, expected) => {
+    expect(parseCostInput(text)).toBe(expected);
+  });
+
+  it.each(['15.99', '1,2,3', 'abc', '1.23', ',5', '12,'])('rechaza "%s"', (text) => {
+    expect(parseCostInput(text)).toBeNaN();
+  });
+
+  it('formatea con coma y sin separador de miles', () => {
+    expect(formatCostInput(15.99)).toBe('15,99');
+    expect(formatCostInput(1234)).toBe('1234');
+  });
+
+  it('el validador acepta texto en español y marca formato, mínimo, máximo y decimales', () => {
+    expect(costValidator(new FormControl('15,99'))).toBeNull();
+    expect(costValidator(new FormControl('15.99'))).toEqual({ cost_format: true });
+    expect(costValidator(new FormControl('0,001'))).toEqual({ cost_min: true });
+    expect(costValidator(new FormControl('100.000.000'))).toEqual({ cost_max: true });
+    expect(costValidator(new FormControl('1,234'))).toEqual({ cost_decimals: true });
   });
 });

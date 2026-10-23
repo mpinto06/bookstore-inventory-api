@@ -5,20 +5,22 @@ API REST de inventario de librerías con una SPA en Angular que la consume.
 ## Requisitos
 
 - Java 21
-- Docker (con Docker Compose) para la base de datos PostgreSQL 18
+- Docker con Compose v2 (para la base de datos PostgreSQL 18 y, opcionalmente, todo el stack: ver [Docker](#docker))
 - Node.js 24 LTS (o 22 LTS ≥ 22.22.3) y npm para el frontend (ver [Frontend](#frontend))
 
 ## Instalación y ejecución
 
+> Para levantar todo sin instalar Java ni Node, salta a [Docker](#docker).
+
 1. (Opcional) copia `.env.example` a `.env` para cambiar credenciales o puerto de la BD.
    Los valores por defecto coinciden con los de `backend/src/main/resources/application.properties`.
    La BD se publica en el puerto **5433** del host (no en el 5432 estándar) para evitar
-   conflictos con una posible instancia local de PostgreSQL. Si cambias `DB_PORT`, define
+   conflictos con una posible instancia local de PostgreSQL. Si cambias `DB_HOST_PORT`, define
    también `DB_URL` al arrancar el backend.
 2. Levanta la base de datos desde la raíz del repo:
 
    ```bash
-   docker compose up -d --wait
+   docker compose up -d --wait db
    ```
 
 3. Arranca el backend:
@@ -36,13 +38,68 @@ API REST de inventario de librerías con una SPA en Angular que la consume.
 
 ```bash
 docker compose down -v
-docker compose up -d --wait
+docker compose up -d --wait db
 ```
 
 `-v` elimina el volumen con los datos. Es necesario porque, mientras el proyecto está en
 desarrollo, las migraciones se **editan** en lugar de apilar `ALTER`s (V2, V3...) para mantener
 un historial limpio; Flyway detectaría el cambio de checksum en una migración ya aplicada, así
 que hay que recrear la BD para re-aplicarla.
+
+## Docker
+
+Un solo comando levanta base de datos, backend y frontend, sin configuración previa.
+
+**Requisitos:** Docker con Compose v2 (`docker compose`, no `docker-compose`).
+
+```bash
+docker compose up --build
+```
+
+| Qué | URL |
+|-----|-----|
+| Frontend (SPA, nginx) | http://localhost:4200 |
+| API a través de nginx | http://localhost:4200/api/books |
+| API directa | http://localhost:8080/books |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| PostgreSQL (solo loopback) | `127.0.0.1:5433` |
+
+nginx sirve la SPA (con fallback a `index.html`) y reenvía `/api/*` al backend quitando el prefijo
+`/api`, igual que el proxy de `ng serve`. Los servicios arrancan en orden (`db` -> `backend` ->
+`frontend`) esperando a que el anterior esté *healthy*.
+
+**Variables** (opcionales; copia `.env.example` a `.env`; los valores por defecto son solo para
+desarrollo/evaluación):
+
+| Variable | Defecto | Uso |
+|----------|---------|-----|
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `bookstore` | Credenciales de la BD; el backend las recibe como `DB_URL`, `DB_USER`, `DB_PASSWORD` |
+| `DB_HOST_PORT` | `5433` | Puerto de la BD en el host (solo `127.0.0.1`) |
+| `BACKEND_PORT` | `8080` | Puerto del backend en el host |
+| `FRONTEND_PORT` | `4200` | Puerto del frontend en el host |
+
+**Comandos útiles**
+
+```bash
+docker compose logs -f backend      # logs (también: db, frontend)
+docker compose ps                   # estado y salud de los servicios
+docker compose down                 # detiene; los datos se conservan
+docker compose down -v              # reinicio desde cero: borra el volumen (Flyway reaplica V1..)
+docker compose up -d --wait db      # solo la BD, para correr el backend con Maven y `ng serve`
+```
+
+**Solución de problemas**
+
+- *Puerto ocupado* (`port is already allocated`): cambia `FRONTEND_PORT`, `BACKEND_PORT` o `DB_HOST_PORT` en `.env`.
+- *Cambiaste las credenciales y el backend no conecta*: el volumen conserva las de la primera
+  creación; ejecuta `docker compose down -v`.
+- *Fallo de certificado al construir* (`PKIX path building failed`, `certificate not trusted`):
+  un antivirus (p. ej. Avast "Web Shield") o un proxy corporativo intercepta el HTTPS de los
+  contenedores. Desactiva el escaneo HTTPS del antivirus mientras haces `docker compose build`, o
+  añade la CA del proxy a Docker. Una vez construidas las imágenes, ya no hace falta.
+
+Los **tests del backend** usan Testcontainers y necesitan Docker en marcha (ver [Tests](#tests)); no se
+ejecutan dentro del build de la imagen (`-DskipTests`).
 
 ## Tests
 
@@ -85,7 +142,7 @@ npx ng test --watch=false       # tests unitarios (Vitest + jsdom), sin backend
 
 **Proxy `/api`:** la SPA siempre llama a `/api/...` (`environment.apiBaseUrl = '/api'`). En desarrollo,
 `ng serve` reenvía esas peticiones a `http://localhost:8080` quitando el prefijo (`proxy.conf.json`:
-`/api/books` -> `/books`). En producción la misma regla la aplicará nginx. Para el navegador todo es el
+`/api/books` -> `/books`). En Docker la misma regla la aplica nginx (`frontend/nginx.conf`). Para el navegador todo es el
 mismo origen, así que el backend no necesita CORS. Con el backend caído, el proxy responde **502**: la
 SPA lo muestra como "Sin conexión con el servidor" con un botón "Reintentar".
 
@@ -411,6 +468,52 @@ solo aparece en errores de validación:
 | 422 | país del proveedor sin moneda asociada |
 | 503 | base de datos no disponible; sin tasa de cambio para la moneda |
 | 500 | fallo inesperado del servidor (mensaje genérico; el detalle solo va al log) |
+
+## Colección de Postman
+
+En `postman/` hay una colección con una petición por caso (felices y de error) y tests propios:
+
+- `bookstore-inventory-api.postman_collection.json` (formato v2.1.0)
+- `bookstore-inventory-api.postman_environment.json` (variable `base_url`, por defecto `http://localhost:8080`, sin barra final)
+
+**Importar en Postman:** *Import* y selecciona ambos archivos; elige el entorno "Bookstore Inventory API - local" y
+ejecuta la colección con el *Collection Runner*. Necesita el backend en marcha (ver [Docker](#docker) o
+[Instalación y ejecución](#instalación-y-ejecución)).
+
+**Correrla con Newman:**
+
+```bash
+npx newman run postman/bookstore-inventory-api.postman_collection.json \
+  -e postman/bookstore-inventory-api.postman_environment.json
+```
+
+Para cambiar el destino sobreescribe `base_url`: backend directo (`http://localhost:8080`, el valor por
+defecto) o a través de nginx, que añade el prefijo `/api`:
+
+```bash
+npx newman run postman/bookstore-inventory-api.postman_collection.json \
+  -e postman/bookstore-inventory-api.postman_environment.json \
+  --env-var base_url=http://localhost:4200/api
+```
+
+Ninguna petición lleva el host escrito: todas usan `{{base_url}}`.
+
+| Carpeta | Qué cubre |
+|---------|-----------|
+| 00 Preparación | genera `run_id` e ISBN-13 válidos únicos de la corrida y comprueba que la API responde |
+| 01 CRUD feliz | alta (ignora `id`, precio y fechas enviados), GET, listado paginado, PUT completo y alta del libro VE |
+| 02 Búsquedas | search (también con otra capitalización y sin resultados), low-stock con umbral explícito y por defecto, categories |
+| 03 Calcular precio | ES -> EUR y VE -> VES, los 8 campos más `rate_source`/`rate_date`, comprobación exacta (enteros) de `cost_local` y `selling_price_local` con la tasa devuelta, persistencia y borrado del precio al cambiar `cost_usd` |
+| 04 Validaciones 400 | una petición por caso inválido: campos del body, JSON malformado o vacío, ids enormes o no numéricos, paginación, orden y umbrales |
+| 05 Otros errores | 404, 405, 409 (POST y PUT), 415, 422 (país `AQ`) y 503 (país `KP`: su moneda no tiene tasa) |
+| 06 Limpieza | borra lo creado, comprueba 404 y 404 en el borrado repetido, barre restos y verifica que no queda nada |
+
+Un test a nivel de colección corre en **todas** las peticiones: el status nunca es 500, los errores son JSON
+con `ApiError` válido (sin trazas ni clases Java) y las claves están en `snake_case`.
+
+Cada corrida usa datos únicos (categoría `pm-<run_id>`, ISBN aleatorios) y se limpia sola, así que puede
+ejecutarse varias veces seguidas contra la misma base de datos. El 503 por base de datos caída no se puede
+reproducir por API: lo cubren los tests del backend.
 
 ## Decisiones técnicas
 

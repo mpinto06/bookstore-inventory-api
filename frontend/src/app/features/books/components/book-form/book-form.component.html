@@ -113,15 +113,14 @@
         <input
           id="field-cost_usd"
           class="form-control"
-          type="number"
+          type="text"
           inputmode="decimal"
-          step="0.01"
+          autocomplete="off"
           formControlName="cost_usd"
           data-testid="field-cost_usd"
-          aria-describedby="hint-cost error-cost_usd"
+          aria-describedby="error-cost_usd"
           [attr.aria-invalid]="fieldError('cost_usd') ? 'true' : null"
         />
-        <p id="hint-cost" class="form-hint">Entre 0,01 y 99.999.999,99, con hasta 2 decimales.</p>
         <p id="error-cost_usd" class="form-error" data-testid="error-cost_usd">
           {{ fieldError('cost_usd') }}
         </p>
@@ -137,10 +136,9 @@
           step="1"
           formControlName="stock_quantity"
           data-testid="field-stock_quantity"
-          aria-describedby="hint-stock error-stock_quantity"
+          aria-describedby="error-stock_quantity"
           [attr.aria-invalid]="fieldError('stock_quantity') ? 'true' : null"
         />
-        <p id="hint-stock" class="form-hint">Unidades enteras, de 0 a 1.000.000.</p>
         <p id="error-stock_quantity" class="form-error" data-testid="error-stock_quantity">
           {{ fieldError('stock_quantity') }}
         </p>
