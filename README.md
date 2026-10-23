@@ -2,55 +2,9 @@
 
 API REST de inventario de librerías con una SPA en Angular que la consume.
 
-## Requisitos
+## Inicio rápido
 
-- Java 21
-- Docker con Compose v2 (para la base de datos PostgreSQL 18 y, opcionalmente, todo el stack: ver [Docker](#docker))
-- Node.js 24 LTS (o 22 LTS ≥ 22.22.3) y npm para el frontend (ver [Frontend](#frontend))
-
-## Instalación y ejecución
-
-> Para levantar todo sin instalar Java ni Node, salta a [Docker](#docker).
-
-1. (Opcional) copia `.env.example` a `.env` para cambiar credenciales o puerto de la BD.
-   Los valores por defecto coinciden con los de `backend/src/main/resources/application.properties`.
-   La BD se publica en el puerto **5433** del host (no en el 5432 estándar) para evitar
-   conflictos con una posible instancia local de PostgreSQL. Si cambias `DB_HOST_PORT`, define
-   también `DB_URL` al arrancar el backend.
-2. Levanta la base de datos desde la raíz del repo:
-
-   ```bash
-   docker compose up -d --wait db
-   ```
-
-3. Arranca el backend:
-
-   ```bash
-   cd backend
-   ./mvnw spring-boot:run
-   ```
-
-   Flyway aplica las migraciones de `backend/src/main/resources/db/migration` al arrancar.
-
-4. Tests: ver la sección [Tests](#tests) (los de integración usan Docker).
-
-### Reiniciar la base de datos desde cero
-
-```bash
-docker compose down -v
-docker compose up -d --wait db
-```
-
-`-v` elimina el volumen con los datos. Es necesario porque, mientras el proyecto está en
-desarrollo, las migraciones se **editan** en lugar de apilar `ALTER`s (V2, V3...) para mantener
-un historial limpio; Flyway detectaría el cambio de checksum en una migración ya aplicada, así
-que hay que recrear la BD para re-aplicarla.
-
-## Docker
-
-Un solo comando levanta base de datos, backend y frontend, sin configuración previa.
-
-**Requisitos:** Docker con Compose v2 (`docker compose`, no `docker-compose`).
+Solo necesitas Docker con Compose v2. No hace falta instalar Java ni Node.
 
 ```bash
 docker compose up --build
@@ -64,9 +18,64 @@ docker compose up --build
 | Swagger UI | http://localhost:8080/swagger-ui.html |
 | PostgreSQL (solo loopback) | `127.0.0.1:5433` |
 
-nginx sirve la SPA (con fallback a `index.html`) y reenvía `/api/*` al backend quitando el prefijo
-`/api`, igual que el proxy de `ng serve`. Los servicios arrancan en orden (`db` -> `backend` ->
-`frontend`) esperando a que el anterior esté *healthy*.
+Para detenerlo: `docker compose down` (los datos se conservan).
+
+## Levantar cada servicio
+
+El stack tiene tres servicios que arrancan en orden (`db` -> `backend` -> `frontend`), cada uno esperando
+a que el anterior esté *healthy*. Cada uno se puede levantar **con Docker** o **en local** (con Maven o
+npm, útil para desarrollar con recarga en caliente).
+
+| Servicio | Con Docker | En local | Requiere antes |
+|----------|-----------|----------|----------------|
+| `db` | `docker compose up -d --wait db` | (crear BD en Postgres) | nada |
+| `backend` | `docker compose up -d --build --wait backend` | `./mvnw spring-boot:run` | `db` |
+| `frontend` | `docker compose up -d --build frontend` | `npx ng serve` | `backend` |
+
+Con Docker, Compose levanta solo las dependencias que falten (pedir `backend` también arranca `db`).
+
+**Requisitos para el modo local:** Java 21 (backend) y Node.js 24 LTS, o 22 LTS >= 22.22.3 (frontend).
+
+### 1. Base de datos (`db`)
+
+PostgreSQL 18 en Docker. Es el único servicio que siempre corre en contenedor, también en desarrollo local.
+
+```bash
+docker compose up -d --wait db
+```
+
+Se publica en el puerto **5433** del host (no en el 5432 estándar) para evitar conflictos con una posible
+instancia local de PostgreSQL. Si cambias `DB_HOST_PORT`, define también `DB_URL` al arrancar el backend
+en local.
+
+### 2. Backend
+
+- **Con Docker:** `docker compose up -d --build --wait backend`. Puerto 8080, API en http://localhost:8080/books.
+- **En local** (con la BD ya levantada):
+
+  ```bash
+  cd backend
+  ./mvnw spring-boot:run
+  ```
+
+Flyway aplica las migraciones de `backend/src/main/resources/db/migration` al arrancar. Los valores por
+defecto de conexión coinciden con los de `backend/src/main/resources/application.properties`.
+
+### 3. Frontend
+
+- **Con Docker:** `docker compose up -d --build frontend`. nginx sirve la SPA en http://localhost:4200.
+- **En local** (con el backend ya levantado en :8080):
+
+  ```bash
+  cd frontend
+  npm ci                          # instala exactamente lo de package-lock.json
+  npx ng serve                    # http://localhost:4200, recarga al editar
+  ```
+
+nginx sirve la SPA (con fallback a `index.html`) y reenvía `/api/*` al backend quitando el prefijo `/api`,
+igual que el proxy de `ng serve`. Más detalle en la sección [Frontend](#frontend).
+
+## Configuración y operación
 
 **Variables** (opcionales; copia `.env.example` a `.env`; los valores por defecto son solo para
 desarrollo/evaluación):
@@ -84,9 +93,13 @@ desarrollo/evaluación):
 docker compose logs -f backend      # logs (también: db, frontend)
 docker compose ps                   # estado y salud de los servicios
 docker compose down                 # detiene; los datos se conservan
-docker compose down -v              # reinicio desde cero: borra el volumen (Flyway reaplica V1..)
-docker compose up -d --wait db      # solo la BD, para correr el backend con Maven y `ng serve`
+docker compose down -v              # reinicio desde cero: borra el volumen de la BD
 ```
+
+**Reiniciar la base de datos desde cero:** `docker compose down -v` y vuelve a levantar. `-v` elimina el
+volumen con los datos. Es necesario porque, mientras el proyecto está en desarrollo, las migraciones se
+**editan** en lugar de apilar `ALTER`s (V2, V3...) para mantener un historial limpio; Flyway detectaría el
+cambio de checksum en una migración ya aplicada, así que hay que recrear la BD para re-aplicarla.
 
 **Solución de problemas**
 
@@ -477,8 +490,8 @@ En `postman/` hay una colección con una petición por caso (felices y de error)
 - `bookstore-inventory-api.postman_environment.json` (variable `base_url`, por defecto `http://localhost:8080`, sin barra final)
 
 **Importar en Postman:** *Import* y selecciona ambos archivos; elige el entorno "Bookstore Inventory API - local" y
-ejecuta la colección con el *Collection Runner*. Necesita el backend en marcha (ver [Docker](#docker) o
-[Instalación y ejecución](#instalación-y-ejecución)).
+ejecuta la colección con el *Collection Runner*. Necesita el backend en marcha (ver [Inicio rápido](#inicio-rápido) o
+[Levantar cada servicio](#levantar-cada-servicio)).
 
 **Correrla con Newman:**
 
